@@ -1,0 +1,84 @@
+# Cargo configuration for LLM-CoPilot-Agent workspace
+
+[build]
+# Use all available CPU cores for compilation
+jobs = -1
+
+# Incremental compilation for faster rebuilds in development
+incremental = true
+
+# Target directory
+target-dir = "target"
+
+[target.x86_64-unknown-linux-gnu]
+# Linux-specific linker settings
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-apple-darwin]
+# macOS x86_64-specific settings
+rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/ld"]
+
+[target.aarch64-apple-darwin]
+# macOS ARM64-specific settings
+rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/ld"]
+
+[alias]
+# Convenient cargo aliases
+b = "build"
+c = "check"
+t = "test"
+r = "run"
+br = "build --release"
+tr = "test --release"
+cw = "check --workspace"
+tw = "test --workspace"
+bw = "build --workspace"
+clippy-all = "clippy --workspace --all-targets --all-features -- -D warnings"
+fmt-all = "fmt --all -- --check"
+
+# Development helpers
+dev = "watch -x check -x test -x run"
+quick-check = "check --workspace --all-targets"
+full-check = "clippy --workspace --all-targets --all-features -- -D warnings"
+
+# Testing aliases
+test-all = "test --workspace --all-features"
+test-unit = "test --lib --workspace"
+test-integration = "test --test '*' --workspace"
+test-doc = "test --doc --workspace"
+
+# Coverage
+coverage = "llvm-cov --workspace --lcov --output-path lcov.info"
+
+[term]
+# Color output
+color = "auto"
+verbose = false
+
+[profile]
+# Profile defaults are defined in workspace Cargo.toml
+
+[net]
+# Network configuration
+git-fetch-with-cli = true
+
+[registries.crates-io]
+protocol = "sparse"
+
+[env]
+# Environment variables for build
+RUST_BACKTRACE = { value = "1", force = false }
+
+[http]
+# HTTP settings
+check-revoke = true
+multiplexing = true
+timeout = 30
+
+[cargo-new]
+# Default settings for new crates
+vcs = "git"
+
+[future-incompat-report]
+frequency = "always"

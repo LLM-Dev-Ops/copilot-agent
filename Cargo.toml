@@ -1,0 +1,159 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/copilot-core",
+    "crates/copilot-nlp",
+    "crates/copilot-context",
+    "crates/copilot-conversation",
+    "crates/copilot-workflow",
+    "crates/copilot-adapters",
+    "crates/copilot-api",
+    "crates/copilot-infra",
+    "apps/copilot-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["LLM-CoPilot-Agent Team"]
+license = "SEE LICENSE IN LICENSE.md"
+repository = "https://github.com/llm-copilot-agent/llm-copilot-agent"
+
+[workspace.dependencies]
+# Internal crates
+copilot-core = { path = "crates/copilot-core" }
+copilot-nlp = { path = "crates/copilot-nlp" }
+copilot-context = { path = "crates/copilot-context" }
+copilot-conversation = { path = "crates/copilot-conversation" }
+copilot-workflow = { path = "crates/copilot-workflow" }
+copilot-adapters = { path = "crates/copilot-adapters" }
+copilot-api = { path = "crates/copilot-api" }
+copilot-infra = { path = "crates/copilot-infra" }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-util = { version = "0.7", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# Web framework
+axum = { version = "0.7", features = ["ws", "multipart", "macros"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tower = { version = "0.4", features = ["full"] }
+tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
+hyper = { version = "1.1", features = ["full"] }
+
+# gRPC
+tonic = { version = "0.11", features = ["transport", "tls", "gzip"] }
+tonic-build = "0.11"
+tonic-reflection = "0.11"
+prost = "0.12"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json", "migrate"] }
+sea-query = "0.30"
+
+# Cache
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager", "aio"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+toml = "0.8"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+tracing-opentelemetry = "0.22"
+opentelemetry = "0.21"
+opentelemetry-otlp = "0.14"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+once_cell = "1.19"
+lazy_static = "1.4"
+
+# Configuration
+config = "0.14"
+dotenv = "0.15"
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# JSON processing
+serde_path_to_error = "0.1"
+json-patch = "1.2"
+
+# Validation
+validator = { version = "0.16", features = ["derive"] }
+
+# Cryptography
+sha2 = "0.10"
+hmac = "0.12"
+base64 = "0.21"
+
+# Concurrency
+dashmap = "5.5"
+parking_lot = "0.12"
+
+# Testing
+mockall = "0.12"
+wiremock = "0.6"
+testcontainers = "0.15"
+
+[profile.dev]
+opt-level = 0
+debug = true
+split-debuginfo = "unpacked"
+strip = "none"
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = "unwind"
+incremental = true
+codegen-units = 256
+
+[profile.release]
+opt-level = 3
+debug = false
+split-debuginfo = "none"
+strip = "symbols"
+debug-assertions = false
+overflow-checks = false
+lto = "thin"
+panic = "abort"
+incremental = false
+codegen-units = 1
+
+[profile.test]
+opt-level = 0
+debug = true
+split-debuginfo = "unpacked"
+strip = "none"
+debug-assertions = true
+overflow-checks = true
+incremental = true
+codegen-units = 256
+
+[profile.bench]
+opt-level = 3
+debug = false
+split-debuginfo = "none"
+strip = "symbols"
+debug-assertions = false
+overflow-checks = false
+lto = true
+incremental = false
+codegen-units = 1

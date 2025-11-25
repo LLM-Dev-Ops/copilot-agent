@@ -1,0 +1,520 @@
+# Prometheus Recording Rules for LLM-CoPilot-Agent
+# Version: 1.0.0
+# Last Updated: 2025-11-25
+#
+# Recording rules pre-compute frequently needed or computationally expensive expressions
+# and save their results as new time series. This improves query performance and reduces load.
+
+groups:
+  # ==========================================================================
+  # AVAILABILITY SLI RECORDING RULES
+  # ==========================================================================
+  - name: sli_availability
+    interval: 30s
+    rules:
+      # 5-minute availability ratio
+      - record: sli:availability:ratio5m
+        expr: |
+          sum(rate(http_requests_total{status_code=~"2..|3..|429"}[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+        labels:
+          sli_type: "availability"
+
+      # 5-minute availability ratio by environment
+      - record: sli:availability:ratio5m:by_environment
+        expr: |
+          sum by (environment) (rate(http_requests_total{status_code=~"2..|3..|429"}[5m]))
+          /
+          sum by (environment) (rate(http_requests_total[5m]))
+        labels:
+          sli_type: "availability"
+
+      # 1-hour availability ratio
+      - record: sli:availability:ratio1h
+        expr: |
+          sum(rate(http_requests_total{status_code=~"2..|3..|429"}[1h]))
+          /
+          sum(rate(http_requests_total[1h]))
+        labels:
+          sli_type: "availability"
+
+      # 24-hour availability ratio
+      - record: sli:availability:ratio24h
+        expr: |
+          sum(rate(http_requests_total{status_code=~"2..|3..|429"}[24h]))
+          /
+          sum(rate(http_requests_total[24h]))
+        labels:
+          sli_type: "availability"
+
+      # 7-day availability ratio
+      - record: sli:availability:ratio7d
+        expr: |
+          sum(rate(http_requests_total{status_code=~"2..|3..|429"}[7d]))
+          /
+          sum(rate(http_requests_total[7d]))
+        labels:
+          sli_type: "availability"
+
+      # 30-day availability ratio (primary SLO metric)
+      - record: sli:availability:ratio30d
+        expr: |
+          sum(rate(http_requests_total{status_code=~"2..|3..|429"}[30d]))
+          /
+          sum(rate(http_requests_total[30d]))
+        labels:
+          sli_type: "availability"
+
+  # ==========================================================================
+  # LATENCY SLI RECORDING RULES
+  # ==========================================================================
+  - name: sli_latency
+    interval: 30s
+    rules:
+      # Overall p95 latency (5-minute window)
+      - record: sli:latency:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          )
+        labels:
+          sli_type: "latency"
+          percentile: "p95"
+
+      # Overall p99 latency (5-minute window)
+      - record: sli:latency:p99_5m
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          )
+        labels:
+          sli_type: "latency"
+          percentile: "p99"
+
+      # Simple requests p95 latency
+      - record: sli:latency:p95_5m:simple
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{
+              endpoint=~"/api/v1/(conversations|workflows|incidents)|/health"
+            }[5m])) by (le)
+          )
+        labels:
+          sli_type: "latency"
+          percentile: "p95"
+          request_type: "simple"
+
+      # Complex requests p95 latency
+      - record: sli:latency:p95_5m:complex
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{
+              endpoint=~"/api/v1/(conversations|workflows/execute|tests/generate|observability/query|incidents/analyze)",
+              method="POST"
+            }[5m])) by (le)
+          )
+        labels:
+          sli_type: "latency"
+          percentile: "p95"
+          request_type: "complex"
+
+      # Latency by endpoint (p95)
+      - record: sli:latency:p95_5m:by_endpoint
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (endpoint, le)
+          )
+        labels:
+          sli_type: "latency"
+          percentile: "p95"
+
+      # Latency by environment (p95)
+      - record: sli:latency:p95_5m:by_environment
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (environment, le)
+          )
+        labels:
+          sli_type: "latency"
+          percentile: "p95"
+
+      # Median latency (p50)
+      - record: sli:latency:p50_5m
+        expr: |
+          histogram_quantile(0.50,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          )
+        labels:
+          sli_type: "latency"
+          percentile: "p50"
+
+  # ==========================================================================
+  # ERROR RATE SLI RECORDING RULES
+  # ==========================================================================
+  - name: sli_error_rate
+    interval: 30s
+    rules:
+      # 5-minute error rate (5xx only)
+      - record: sli:error_rate:ratio5m
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+        labels:
+          sli_type: "error_rate"
+
+      # 5-minute error rate by environment
+      - record: sli:error_rate:ratio5m:by_environment
+        expr: |
+          sum by (environment) (rate(http_requests_total{status_code=~"5.."}[5m]))
+          /
+          sum by (environment) (rate(http_requests_total[5m]))
+        labels:
+          sli_type: "error_rate"
+
+      # 1-hour error rate
+      - record: sli:error_rate:ratio1h
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[1h]))
+          /
+          sum(rate(http_requests_total[1h]))
+        labels:
+          sli_type: "error_rate"
+
+      # 24-hour error rate
+      - record: sli:error_rate:ratio24h
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[24h]))
+          /
+          sum(rate(http_requests_total[24h]))
+        labels:
+          sli_type: "error_rate"
+
+      # Error rate by status code category
+      - record: sli:error_rate:ratio5m:by_status
+        expr: |
+          sum by (status_code) (rate(http_requests_total{status_code=~"[45].."}[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+        labels:
+          sli_type: "error_rate"
+
+  # ==========================================================================
+  # REQUEST RATE RECORDING RULES
+  # ==========================================================================
+  - name: request_rate
+    interval: 30s
+    rules:
+      # Total request rate (requests per second)
+      - record: request:rate5m
+        expr: sum(rate(http_requests_total[5m]))
+        labels:
+          metric_type: "request_rate"
+
+      # Request rate by endpoint
+      - record: request:rate5m:by_endpoint
+        expr: sum by (endpoint) (rate(http_requests_total[5m]))
+        labels:
+          metric_type: "request_rate"
+
+      # Request rate by environment
+      - record: request:rate5m:by_environment
+        expr: sum by (environment) (rate(http_requests_total[5m]))
+        labels:
+          metric_type: "request_rate"
+
+      # Request rate by status code
+      - record: request:rate5m:by_status
+        expr: sum by (status_code) (rate(http_requests_total[5m]))
+        labels:
+          metric_type: "request_rate"
+
+      # Success request rate (2xx, 3xx)
+      - record: request:rate5m:success
+        expr: sum(rate(http_requests_total{status_code=~"[23].."}[5m]))
+        labels:
+          metric_type: "request_rate"
+          request_type: "success"
+
+      # Error request rate (4xx, 5xx)
+      - record: request:rate5m:error
+        expr: sum(rate(http_requests_total{status_code=~"[45].."}[5m]))
+        labels:
+          metric_type: "request_rate"
+          request_type: "error"
+
+  # ==========================================================================
+  # ERROR BUDGET RECORDING RULES
+  # ==========================================================================
+  - name: error_budget
+    interval: 1m
+    rules:
+      # Error budget remaining (0 to 1, where 1 = 100% remaining)
+      - record: slo:error_budget:remaining
+        expr: |
+          1 - (
+            (1 - sli:availability:ratio30d)
+            /
+            (1 - 0.999)  # SLO target of 99.9%
+          )
+        labels:
+          slo_type: "availability"
+
+      # Error budget consumed percentage (0 to 100)
+      - record: slo:error_budget:consumed_percentage
+        expr: |
+          (1 - slo:error_budget:remaining) * 100
+        labels:
+          slo_type: "availability"
+
+      # Burn rate: How fast we're consuming error budget
+      # >1.0 means consuming faster than planned
+      - record: slo:error_budget:burn_rate_1h
+        expr: |
+          (1 - sli:availability:ratio1h)
+          /
+          (1 - 0.999)
+        labels:
+          slo_type: "availability"
+          window: "1h"
+
+      - record: slo:error_budget:burn_rate_6h
+        expr: |
+          (1 -
+            (sum(rate(http_requests_total{status_code=~"2..|3..|429"}[6h]))
+            /
+            sum(rate(http_requests_total[6h])))
+          )
+          /
+          (1 - 0.999)
+        labels:
+          slo_type: "availability"
+          window: "6h"
+
+      - record: slo:error_budget:burn_rate_24h
+        expr: |
+          (1 - sli:availability:ratio24h)
+          /
+          (1 - 0.999)
+        labels:
+          slo_type: "availability"
+          window: "24h"
+
+      - record: slo:error_budget:burn_rate_3d
+        expr: |
+          (1 -
+            (sum(rate(http_requests_total{status_code=~"2..|3..|429"}[3d]))
+            /
+            sum(rate(http_requests_total[3d])))
+          )
+          /
+          (1 - 0.999)
+        labels:
+          slo_type: "availability"
+          window: "3d"
+
+  # ==========================================================================
+  # MODULE INTEGRATION RECORDING RULES
+  # ==========================================================================
+  - name: module_integration
+    interval: 30s
+    rules:
+      # Module success rate
+      - record: module:success_rate:ratio5m
+        expr: |
+          sum by (module) (rate(module_requests_total{status="success"}[5m]))
+          /
+          sum by (module) (rate(module_requests_total[5m]))
+        labels:
+          metric_type: "module_integration"
+
+      # Module request rate
+      - record: module:request_rate:rate5m
+        expr: sum by (module) (rate(module_requests_total[5m]))
+        labels:
+          metric_type: "module_integration"
+
+      # Module p95 latency
+      - record: module:latency:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (module, le) (rate(module_request_duration_seconds_bucket[5m]))
+          )
+        labels:
+          metric_type: "module_integration"
+          percentile: "p95"
+
+  # ==========================================================================
+  # LLM METRICS RECORDING RULES
+  # ==========================================================================
+  - name: llm_metrics
+    interval: 30s
+    rules:
+      # LLM request rate
+      - record: llm:request_rate:rate5m
+        expr: sum(rate(llm_requests_total[5m]))
+        labels:
+          metric_type: "llm"
+
+      # LLM success rate
+      - record: llm:success_rate:ratio5m
+        expr: |
+          sum(rate(llm_requests_total{status=~"success|rate_limited"}[5m]))
+          /
+          sum(rate(llm_requests_total[5m]))
+        labels:
+          metric_type: "llm"
+
+      # LLM request rate by provider
+      - record: llm:request_rate:rate5m:by_provider
+        expr: sum by (provider) (rate(llm_requests_total[5m]))
+        labels:
+          metric_type: "llm"
+
+      # LLM p95 latency
+      - record: llm:latency:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_request_duration_seconds_bucket[5m])) by (le)
+          )
+        labels:
+          metric_type: "llm"
+          percentile: "p95"
+
+      # LLM p99 latency
+      - record: llm:latency:p99_5m
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(llm_request_duration_seconds_bucket[5m])) by (le)
+          )
+        labels:
+          metric_type: "llm"
+          percentile: "p99"
+
+      # LLM cost rate (USD per hour)
+      - record: llm:cost_rate:per_hour
+        expr: sum(rate(llm_cost_usd[1h])) * 3600
+        labels:
+          metric_type: "llm"
+
+      # Token consumption rate
+      - record: llm:tokens:rate5m
+        expr: sum(rate(llm_tokens_total[5m]))
+        labels:
+          metric_type: "llm"
+
+  # ==========================================================================
+  # INFRASTRUCTURE RECORDING RULES
+  # ==========================================================================
+  - name: infrastructure
+    interval: 30s
+    rules:
+      # CPU usage percentage
+      - record: instance:cpu:usage_percentage
+        expr: |
+          100 - (avg by (pod_name) (rate(process_cpu_seconds_total[5m])) * 100)
+
+      # Memory usage percentage
+      - record: instance:memory:usage_percentage
+        expr: |
+          (process_resident_memory_bytes /
+           (process_resident_memory_bytes +
+            (1024 * 1024 * 1024))) * 100  # Assuming 1GB base
+
+      # Database connection pool utilization
+      - record: db:connection_pool:utilization_ratio
+        expr: |
+          sum by (pool_name) (db_connections_active{state="active"})
+          /
+          sum by (pool_name) (db_connections_active)
+
+      # Redis hit rate
+      - record: redis:cache:hit_ratio
+        expr: |
+          sum(rate(redis_commands_total{command="GET",status="success"}[5m]))
+          /
+          sum(rate(redis_commands_total{command="GET"}[5m]))
+
+  # ==========================================================================
+  # BUSINESS METRICS RECORDING RULES
+  # ==========================================================================
+  - name: business_metrics
+    interval: 1m
+    rules:
+      # Active sessions rate
+      - record: business:sessions:active_rate
+        expr: sum(sessions_active)
+
+      # Conversation rate (per hour)
+      - record: business:conversations:rate1h
+        expr: sum(rate(conversations_total[1h])) * 3600
+
+      # Message processing rate
+      - record: business:messages:rate5m
+        expr: sum(rate(messages_total[5m]))
+
+      # Workflow success rate
+      - record: business:workflows:success_rate
+        expr: |
+          sum(rate(workflow_executions_total{status="success"}[1h]))
+          /
+          sum(rate(workflow_executions_total[1h]))
+
+      # Test generation rate
+      - record: business:tests:generation_rate5m
+        expr: sum(rate(test_generations_total[5m]))
+
+      # Incident detection rate
+      - record: business:incidents:detection_rate1h
+        expr: sum(rate(incidents_detected_total[1h])) * 3600
+
+  # ==========================================================================
+  # COMPOSITE SLI RECORDING RULES
+  # ==========================================================================
+  - name: composite_sli
+    interval: 1m
+    rules:
+      # Overall service quality score (0 to 1)
+      - record: sli:composite:quality_score
+        expr: |
+          (sli:availability:ratio5m * 0.5) +
+          (clamp_max(1 - (sli:latency:p95_5m / 2.0), 1) * 0.3) +
+          ((1 - sli:error_rate:ratio5m) * 0.2)
+        labels:
+          sli_type: "composite"
+
+      # Service health status (0-100 scale)
+      - record: sli:composite:health_score
+        expr: sli:composite:quality_score * 100
+        labels:
+          sli_type: "composite"
+
+  # ==========================================================================
+  # AGGREGATED METRICS FOR DASHBOARDS
+  # ==========================================================================
+  - name: dashboard_aggregations
+    interval: 1m
+    rules:
+      # Total requests in last 5 minutes
+      - record: dashboard:requests:total_5m
+        expr: sum(increase(http_requests_total[5m]))
+
+      # Total errors in last 5 minutes
+      - record: dashboard:errors:total_5m
+        expr: sum(increase(http_requests_total{status_code=~"5.."}[5m]))
+
+      # Average response time in last 5 minutes
+      - record: dashboard:latency:avg_5m
+        expr: |
+          sum(rate(http_request_duration_seconds_sum[5m]))
+          /
+          sum(rate(http_request_duration_seconds_count[5m]))
+
+      # Active pods
+      - record: dashboard:pods:active
+        expr: count(up{job="llm-copilot-agent"} == 1)
+
+      # Total LLM cost today (USD)
+      - record: dashboard:llm:cost_today_usd
+        expr: sum(increase(llm_cost_usd[24h]))

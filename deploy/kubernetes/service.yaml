@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-copilot-agent-service
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: llm-copilot-agent
+    app.kubernetes.io/component: service
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  selector:
+    app.kubernetes.io/name: llm-copilot-agent
+    app.kubernetes.io/component: application
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: http
+  - name: grpc
+    protocol: TCP
+    port: 50051
+    targetPort: grpc
+  - name: metrics
+    protocol: TCP
+    port: 9090
+    targetPort: metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-copilot-agent-headless
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: llm-copilot-agent
+    app.kubernetes.io/component: headless-service
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: llm-copilot-agent
+    app.kubernetes.io/component: application
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8080
+    targetPort: http
+  - name: grpc
+    protocol: TCP
+    port: 50051
+    targetPort: grpc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+  - name: postgres
+    protocol: TCP
+    port: 5432
+    targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+  - name: redis
+    protocol: TCP
+    port: 6379
+    targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats-service
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/component: messaging
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nats
+  ports:
+  - name: client
+    protocol: TCP
+    port: 4222
+    targetPort: 4222
+  - name: monitoring
+    protocol: TCP
+    port: 8222
+    targetPort: 8222
+  - name: cluster
+    protocol: TCP
+    port: 6222
+    targetPort: 6222
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: monitoring
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: prometheus
+  ports:
+  - name: http
+    protocol: TCP
+    port: 9090
+    targetPort: 9090

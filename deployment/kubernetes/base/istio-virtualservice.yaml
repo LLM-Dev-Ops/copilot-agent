@@ -1,0 +1,230 @@
+---
+# Istio Virtual Service for traffic management
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: llm-copilot-agent
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  hosts:
+    - llm-copilot-agent
+    - llm-copilot-agent.llm-copilot.svc.cluster.local
+    - api.llmdevops.io
+  gateways:
+    - llm-copilot-gateway
+    - mesh  # For internal traffic
+  http:
+    # Health check route (no retries)
+    - match:
+        - uri:
+            exact: /health
+        - uri:
+            exact: /ready
+      route:
+        - destination:
+            host: llm-copilot-agent
+            port:
+              number: 80
+      timeout: 5s
+
+    # API routes with retries and timeout
+    - match:
+        - uri:
+            prefix: /api
+      route:
+        - destination:
+            host: llm-copilot-agent
+            port:
+              number: 80
+            subset: stable
+          weight: 100
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: 5xx,reset,connect-failure,refused-stream
+      timeout: 30s
+      corsPolicy:
+        allowOrigins:
+          - exact: https://llmdevops.io
+          - prefix: https://*.llmdevops.io
+        allowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        allowHeaders:
+          - authorization
+          - content-type
+          - x-request-id
+        allowCredentials: true
+        maxAge: 24h
+
+    # Default route
+    - route:
+        - destination:
+            host: llm-copilot-agent
+            port:
+              number: 80
+            subset: stable
+      timeout: 30s
+
+---
+# Destination Rule for circuit breaking and load balancing
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: llm-copilot-agent
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  host: llm-copilot-agent
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+    loadBalancer:
+      consistentHash:
+        httpCookie:
+          name: llm-copilot-session
+          ttl: 3600s
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+    - name: stable
+      labels:
+        version: v1.0.0
+      trafficPolicy:
+        connectionPool:
+          http:
+            maxRequestsPerConnection: 10
+
+    - name: canary
+      labels:
+        version: canary
+      trafficPolicy:
+        connectionPool:
+          http:
+            maxRequestsPerConnection: 5
+
+---
+# Istio Gateway
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: llm-copilot-gateway
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    # HTTPS
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: llm-copilot-tls-cert
+      hosts:
+        - api.llmdevops.io
+        - llm-copilot.llmdevops.io
+
+    # HTTP (redirect to HTTPS)
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - api.llmdevops.io
+        - llm-copilot.llmdevops.io
+      tls:
+        httpsRedirect: true
+
+---
+# Peer Authentication for mutual TLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: llm-copilot-agent
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  selector:
+    matchLabels:
+      app: llm-copilot-agent
+  mtls:
+    mode: STRICT
+
+---
+# Authorization Policy
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: llm-copilot-agent
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  selector:
+    matchLabels:
+      app: llm-copilot-agent
+  action: ALLOW
+  rules:
+    # Allow health checks
+    - to:
+        - operation:
+            paths:
+              - /health
+              - /ready
+            methods:
+              - GET
+
+    # Allow API access with valid JWT
+    - from:
+        - source:
+            requestPrincipals:
+              - "*"
+      to:
+        - operation:
+            paths:
+              - /api/*
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+
+    # Allow from other LLM modules
+    - from:
+        - source:
+            namespaces:
+              - llm-copilot
+            principals:
+              - cluster.local/ns/llm-copilot/sa/llm-test-bench
+              - cluster.local/ns/llm-copilot/sa/llm-observatory
+              - cluster.local/ns/llm-copilot/sa/llm-incident-manager
+              - cluster.local/ns/llm-copilot/sa/llm-orchestrator

@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm-copilot
+  labels:
+    name: llm-copilot
+    environment: production
+    app.kubernetes.io/name: llm-copilot-agent
+    app.kubernetes.io/part-of: llm-devops-ecosystem
+    istio-injection: enabled  # Enable Istio service mesh

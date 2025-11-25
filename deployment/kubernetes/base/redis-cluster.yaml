@@ -1,0 +1,241 @@
+---
+# Redis Cluster for High Availability and Scalability
+apiVersion: redis.redis.opstreelabs.in/v1beta1
+kind: RedisCluster
+metadata:
+  name: redis-cluster
+  namespace: llm-copilot
+  labels:
+    app: redis
+spec:
+  clusterSize: 3  # 3 master nodes
+  clusterVersion: v7
+  kubernetesConfig:
+    image: redis:7-alpine
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    redisSecret:
+      name: redis-secret
+      key: password
+
+  # Redis configuration
+  redisExporter:
+    enabled: true
+    image: oliver006/redis_exporter:v1.55.0
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    env:
+      - name: REDIS_EXPORTER_LOG_FORMAT
+        value: "json"
+
+  # Storage configuration
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 50Gi
+
+  # Redis configuration parameters
+  redisConfig:
+    # Performance
+    maxmemory: "3gb"
+    maxmemory-policy: "allkeys-lru"
+
+    # Persistence
+    save: "900 1 300 10 60 10000"
+    appendonly: "yes"
+    appendfsync: "everysec"
+
+    # Clustering
+    cluster-enabled: "yes"
+    cluster-node-timeout: "5000"
+    cluster-replica-validity-factor: "0"
+
+    # Network
+    tcp-backlog: "511"
+    timeout: "300"
+    tcp-keepalive: "300"
+
+    # Limits
+    maxclients: "10000"
+
+    # Logging
+    loglevel: "notice"
+
+  # Security context
+  securityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # Affinity and anti-affinity
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - redis
+          topologyKey: kubernetes.io/hostname
+
+  # Tolerations
+  tolerations: []
+
+  # Service configuration
+  serviceConfig:
+    type: ClusterIP
+
+---
+# Alternative: Redis Sentinel for HA (without clustering)
+apiVersion: redis.redis.opstreelabs.in/v1beta1
+kind: Redis
+metadata:
+  name: redis-sentinel
+  namespace: llm-copilot
+spec:
+  kubernetesConfig:
+    image: redis:7-alpine
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+  redisExporter:
+    enabled: true
+    image: oliver006/redis_exporter:v1.55.0
+
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 50Gi
+
+  # Sentinel configuration
+  redisSentinelConfig:
+    redisReplicationName: redis-sentinel
+    sentinelConfig:
+      downAfterMilliseconds: "5000"
+      failoverTimeout: "10000"
+      parallelSyncs: "1"
+      quorum: "2"
+    clusterSize: 3
+
+---
+# Redis Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-secret
+  namespace: llm-copilot
+type: Opaque
+stringData:
+  password: "CHANGE_ME_GENERATE_STRONG_PASSWORD"
+
+---
+# PodDisruptionBudget for Redis
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-cluster-pdb
+  namespace: llm-copilot
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis
+
+---
+# ServiceMonitor for Redis metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-cluster
+  namespace: llm-copilot
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  endpoints:
+    - port: redis-exporter
+      interval: 30s
+      path: /metrics
+
+---
+# Redis Backup CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redis-backup
+  namespace: llm-copilot
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: redis-backup
+              image: redis:7-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  redis-cli -h redis-cluster -a $REDIS_PASSWORD --rdb /backup/dump-$(date +%Y%m%d-%H%M%S).rdb
+                  # Upload to S3
+                  aws s3 cp /backup/dump-*.rdb s3://llm-copilot-backups/redis/
+                  # Cleanup old backups (keep last 7 days)
+                  find /backup -name "dump-*.rdb" -mtime +7 -delete
+              env:
+                - name: REDIS_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: redis-secret
+                      key: password
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: redis-backup-pvc
+          restartPolicy: OnFailure
+
+---
+# PVC for Redis backups
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-backup-pvc
+  namespace: llm-copilot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 100Gi

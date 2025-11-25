@@ -1,0 +1,354 @@
+# Database Configuration for LLM-CoPilot-Agent
+# Version: 1.0.0
+
+# ============================================================================
+# PostgreSQL Configuration
+# ============================================================================
+
+postgres:
+  primary:
+    host: ${POSTGRES_PRIMARY_HOST:-localhost}
+    port: ${POSTGRES_PRIMARY_PORT:-5432}
+    database: llm_copilot_agent
+    username: ${POSTGRES_USER:-postgres}
+    password: ${POSTGRES_PASSWORD}
+    ssl_mode: ${POSTGRES_SSL_MODE:-require}
+
+    # Connection parameters
+    application_name: "llm_copilot_agent"
+    connect_timeout: 30
+    statement_timeout: 60000  # 60 seconds
+    idle_in_transaction_session_timeout: 300000  # 5 minutes
+
+  replica:
+    enabled: ${POSTGRES_REPLICA_ENABLED:-false}
+    host: ${POSTGRES_REPLICA_HOST}
+    port: ${POSTGRES_REPLICA_PORT:-5432}
+    database: llm_copilot_agent
+    username: ${POSTGRES_USER:-postgres}
+    password: ${POSTGRES_PASSWORD}
+    ssl_mode: ${POSTGRES_SSL_MODE:-require}
+
+  # Connection Pool Settings
+  pool:
+    max_connections: 50
+    min_connections: 5
+    acquire_timeout_seconds: 30
+    idle_timeout_seconds: 600  # 10 minutes
+    max_lifetime_seconds: 1800  # 30 minutes
+    test_before_acquire: true
+
+  # Performance Settings
+  performance:
+    statement_cache_capacity: 100
+    prepared_statements: true
+
+  # Migration Settings
+  migrations:
+    directory: "./migrations"
+    auto_run: ${AUTO_RUN_MIGRATIONS:-false}
+    validation_enabled: true
+
+# ============================================================================
+# Redis Configuration
+# ============================================================================
+
+redis:
+  # Connection Settings
+  host: ${REDIS_HOST:-localhost}
+  port: ${REDIS_PORT:-6379}
+  password: ${REDIS_PASSWORD}
+  database: ${REDIS_DB:-0}
+  tls: ${REDIS_TLS:-false}
+
+  # Pool Settings
+  pool:
+    max_connections: 100
+    connection_timeout_seconds: 5
+    response_timeout_seconds: 10
+
+  # Cache Settings
+  cache:
+    default_ttl_seconds: 3600  # 1 hour
+    max_memory: "2gb"
+    eviction_policy: "allkeys-lru"
+
+  # Key Prefixes
+  key_prefixes:
+    session: "session:"
+    cache: "cache:"
+    ratelimit: "ratelimit:"
+    queue: "queue:"
+    lock: "lock:"
+    metrics: "metrics:"
+
+  # TTL Settings by Type
+  ttl:
+    session: 86400  # 24 hours
+    cache:
+      short: 300  # 5 minutes
+      medium: 3600  # 1 hour
+      long: 86400  # 24 hours
+    ratelimit: 60  # 1 minute
+    lock: 30  # 30 seconds
+
+  # Cluster Settings (optional)
+  cluster:
+    enabled: ${REDIS_CLUSTER_ENABLED:-false}
+    nodes:
+      - ${REDIS_NODE1:-localhost:6379}
+      - ${REDIS_NODE2}
+      - ${REDIS_NODE3}
+    read_from_replicas: true
+
+# ============================================================================
+# Qdrant Configuration
+# ============================================================================
+
+qdrant:
+  # Connection Settings
+  url: ${QDRANT_URL:-http://localhost:6333}
+  api_key: ${QDRANT_API_KEY}
+  timeout_seconds: 30
+
+  # Collection Configurations
+  collections:
+    code_embeddings:
+      name: "code_embeddings"
+      vector_size: 1536
+      distance: "cosine"
+      on_disk: false
+
+    documentation_embeddings:
+      name: "documentation_embeddings"
+      vector_size: 1536
+      distance: "cosine"
+      on_disk: false
+
+    conversation_embeddings:
+      name: "conversation_embeddings"
+      vector_size: 1536
+      distance: "cosine"
+      on_disk: true
+
+    incident_knowledge:
+      name: "incident_knowledge"
+      vector_size: 1536
+      distance: "cosine"
+      on_disk: false
+
+  # HNSW Index Configuration
+  hnsw:
+    m: 16  # Number of edges per node
+    ef_construct: 100  # Quality of index construction
+    full_scan_threshold: 10000
+    max_indexing_threads: 0  # 0 = use all CPUs
+    on_disk: false
+
+  # Optimizer Configuration
+  optimizer:
+    deleted_threshold: 0.2
+    vacuum_min_vector_number: 1000
+    default_segment_number: 2
+    max_segment_size: 200000
+    memmap_threshold: 50000
+    indexing_threshold: 20000
+    flush_interval_sec: 5
+    max_optimization_threads: 4
+
+# ============================================================================
+# Backup Configuration
+# ============================================================================
+
+backup:
+  postgres:
+    enabled: ${BACKUP_ENABLED:-true}
+    schedule: "0 2 * * *"  # Daily at 2 AM (cron format)
+    retention_days: 30
+    compression: true
+    encryption: true
+
+    # Backup Types
+    full_backup:
+      enabled: true
+      schedule: "0 2 * * 0"  # Weekly on Sunday at 2 AM
+
+    incremental_backup:
+      enabled: true
+      schedule: "0 */6 * * *"  # Every 6 hours
+
+    wal_archiving:
+      enabled: true
+      archive_mode: "on"
+      archive_timeout: 3600  # 1 hour
+
+    # Storage Configuration
+    s3:
+      enabled: ${BACKUP_S3_ENABLED:-false}
+      bucket: ${BACKUP_S3_BUCKET}
+      region: ${BACKUP_S3_REGION:-us-east-1}
+      prefix: "postgresql/"
+      storage_class: "STANDARD_IA"
+      encryption: "AES256"
+
+  validation:
+    enabled: ${BACKUP_VALIDATION_ENABLED:-true}
+    schedule: "0 3 1 * *"  # Monthly on 1st at 3 AM
+    test_database: "backup_validation_test"
+
+# ============================================================================
+# Disaster Recovery Configuration
+# ============================================================================
+
+disaster_recovery:
+  # SLA Targets
+  rto_minutes: 15  # Recovery Time Objective
+  rpo_minutes: 60  # Recovery Point Objective
+
+  # Replication Configuration
+  replication:
+    enabled: ${REPLICATION_ENABLED:-true}
+    type: "streaming"  # streaming, logical, or snapshot
+    sync_mode: "async"  # async, sync, or remote_apply
+    max_wal_senders: 5
+    wal_keep_size_mb: 1024
+
+  # Failover Configuration
+  failover:
+    automatic: ${AUTO_FAILOVER:-false}
+    health_check_interval_seconds: 30
+    failure_threshold: 3
+    promote_timeout_seconds: 60
+
+  # Cross-Region Configuration
+  cross_region:
+    enabled: ${DR_CROSS_REGION_ENABLED:-false}
+    region: ${DR_REGION:-us-west-2}
+    s3_bucket: ${DR_S3_BUCKET}
+    replication_lag_threshold_seconds: 300
+
+# ============================================================================
+# Monitoring and Observability
+# ============================================================================
+
+monitoring:
+  # Health Checks
+  health_check:
+    enabled: true
+    interval_seconds: 30
+    timeout_seconds: 5
+
+  # Metrics
+  metrics:
+    enabled: true
+    export_interval_seconds: 60
+    prometheus:
+      enabled: ${PROMETHEUS_ENABLED:-false}
+      port: ${PROMETHEUS_PORT:-9090}
+
+  # Logging
+  logging:
+    level: ${LOG_LEVEL:-info}  # debug, info, warn, error
+    format: "json"  # json or text
+
+    database:
+      log_queries: ${LOG_QUERIES:-false}
+      log_slow_queries: true
+      slow_query_threshold_ms: 1000
+
+    audit:
+      enabled: true
+      retention_days: 365
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+
+performance:
+  # Query Optimization
+  query:
+    timeout_ms: 60000
+    batch_size: 1000
+    max_batch_size: 10000
+
+  # Cache Strategy
+  cache:
+    strategy: "cache-aside"  # cache-aside, write-through, write-behind
+    warm_on_startup: true
+    preload_tables:
+      - users
+      - workflows
+
+  # Read Replica Routing
+  read_replica:
+    enabled: ${READ_REPLICA_ENABLED:-false}
+    routing_strategy: "round-robin"  # round-robin, least-connections, random
+    fallback_to_primary: true
+    lag_threshold_seconds: 10
+
+# ============================================================================
+# Security Configuration
+# ============================================================================
+
+security:
+  # Encryption
+  encryption:
+    at_rest: ${ENCRYPTION_AT_REST:-true}
+    in_transit: true
+    algorithm: "AES-256-GCM"
+
+  # Password Policy
+  password:
+    min_length: 12
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_special: true
+    hash_algorithm: "argon2id"
+
+  # API Keys
+  api_key:
+    rotation_days: 90
+    hash_algorithm: "sha256"
+
+  # Session Security
+  session:
+    timeout_minutes: 1440  # 24 hours
+    idle_timeout_minutes: 60
+    secure_cookie: true
+    same_site: "strict"
+
+  # Rate Limiting
+  rate_limiting:
+    enabled: true
+    default_limit: 100
+    window_seconds: 60
+
+    endpoints:
+      login:
+        limit: 5
+        window_seconds: 300  # 5 minutes
+      api:
+        limit: 1000
+        window_seconds: 60
+      graphql:
+        limit: 100
+        window_seconds: 60
+
+# ============================================================================
+# Development/Testing Configuration
+# ============================================================================
+
+development:
+  # Auto-create test data
+  seed_database: ${SEED_DATABASE:-false}
+
+  # Mock services
+  mock_services:
+    enabled: ${MOCK_SERVICES:-false}
+
+  # Debug options
+  debug:
+    log_queries: true
+    verbose_errors: true
+    disable_rate_limiting: true

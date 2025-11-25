@@ -1,0 +1,324 @@
+---
+# Velero Backup Schedule for Disaster Recovery
+# Requires Velero to be installed in the cluster
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: llm-copilot-daily-backup
+  namespace: velero
+spec:
+  schedule: "0 1 * * *"  # Daily at 1 AM
+  template:
+    includedNamespaces:
+      - llm-copilot
+    excludedResources:
+      - events
+      - events.events.k8s.io
+    storageLocation: default
+    volumeSnapshotLocations:
+      - default
+    ttl: 720h  # 30 days retention
+    snapshotVolumes: true
+    includeClusterResources: true
+    hooks:
+      resources:
+        - name: postgres-backup-hook
+          includedNamespaces:
+            - llm-copilot
+          labelSelector:
+            matchLabels:
+              app: postgres
+          pre:
+            - exec:
+                container: postgres
+                command:
+                  - /bin/bash
+                  - -c
+                  - PGPASSWORD=$POSTGRES_PASSWORD pg_dump -U $POSTGRES_USER -h localhost $POSTGRES_DB > /tmp/backup.sql
+                onError: Fail
+                timeout: 10m
+          post:
+            - exec:
+                container: postgres
+                command:
+                  - /bin/bash
+                  - -c
+                  - rm -f /tmp/backup.sql
+
+---
+# Weekly full backup
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: llm-copilot-weekly-backup
+  namespace: velero
+spec:
+  schedule: "0 2 * * 0"  # Weekly on Sunday at 2 AM
+  template:
+    includedNamespaces:
+      - llm-copilot
+    storageLocation: default
+    volumeSnapshotLocations:
+      - default
+    ttl: 2160h  # 90 days retention
+    snapshotVolumes: true
+    includeClusterResources: true
+
+---
+# Backup Storage Location (AWS S3)
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+  provider: aws
+  objectStorage:
+    bucket: llm-copilot-velero-backups
+    prefix: production
+  config:
+    region: us-east-1
+    s3ForcePathStyle: "false"
+    s3Url: https://s3.us-east-1.amazonaws.com
+    # Use server-side encryption
+    serverSideEncryption: AES256
+    # Or KMS
+    # kmsKeyId: arn:aws:kms:us-east-1:ACCOUNT:key/KEY_ID
+
+  # Cross-region backup for DR
+  backup:
+    regions:
+      - us-east-1
+      - us-west-2
+
+---
+# Volume Snapshot Location
+apiVersion: velero.io/v1
+kind: VolumeSnapshotLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+  provider: aws
+  config:
+    region: us-east-1
+
+---
+# Disaster Recovery Restore Plan
+# This is documentation/runbook, not executable
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dr-restore-runbook
+  namespace: llm-copilot
+data:
+  README.md: |
+    # Disaster Recovery Restore Procedure
+
+    ## RTO: 15 minutes | RPO: 1 hour
+
+    ### Prerequisites
+    - Access to backup storage (S3)
+    - Velero CLI installed
+    - kubectl access to target cluster
+    - AWS credentials configured
+
+    ### Restore Procedure
+
+    #### 1. List Available Backups
+    ```bash
+    velero backup get
+    ```
+
+    #### 2. Restore Latest Backup
+    ```bash
+    velero restore create --from-backup llm-copilot-daily-backup-TIMESTAMP
+    ```
+
+    #### 3. Restore Specific Backup
+    ```bash
+    velero restore create restore-NAME --from-backup BACKUP_NAME
+    ```
+
+    #### 4. Monitor Restore Progress
+    ```bash
+    velero restore describe restore-NAME
+    velero restore logs restore-NAME
+    ```
+
+    #### 5. Verify Restoration
+    ```bash
+    kubectl get pods -n llm-copilot
+    kubectl get pvc -n llm-copilot
+    ```
+
+    #### 6. Restore Database
+    ```bash
+    # For PostgreSQL
+    kubectl exec -it llm-copilot-postgres-0 -n llm-copilot -- \
+      psql -U llm_user -d llm_copilot < /backup/dump.sql
+
+    # For Redis (if needed)
+    kubectl exec -it redis-cluster-0 -n llm-copilot -- \
+      redis-cli -a $REDIS_PASSWORD --rdb /data/dump.rdb
+    ```
+
+    #### 7. Verify Application Health
+    ```bash
+    kubectl rollout status deployment/llm-copilot-agent -n llm-copilot
+    curl https://api.llmdevops.io/health
+    ```
+
+    #### 8. Run Smoke Tests
+    ```bash
+    kubectl run smoke-test --rm -i --restart=Never \
+      --image=curlimages/curl:latest \
+      -- curl -f http://llm-copilot-agent.llm-copilot.svc.cluster.local/health
+    ```
+
+    ### Failover to Secondary Region
+
+    #### 1. Update DNS
+    ```bash
+    # Point DNS to secondary region
+    aws route53 change-resource-record-sets \
+      --hosted-zone-id ZONE_ID \
+      --change-batch file://failover-dns.json
+    ```
+
+    #### 2. Restore in Secondary Region
+    ```bash
+    # Use secondary region backup storage
+    velero backup-location create secondary \
+      --provider aws \
+      --bucket llm-copilot-velero-backups \
+      --config region=us-west-2
+
+    velero restore create --from-backup BACKUP_NAME \
+      --backup-location secondary
+    ```
+
+    #### 3. Verify Secondary Region
+    ```bash
+    kubectl config use-context secondary-cluster
+    kubectl get pods -n llm-copilot
+    ```
+
+    ### Recovery Time Objectives
+
+    - **Database Restore**: 5 minutes
+    - **Application Restore**: 5 minutes
+    - **DNS Propagation**: 5 minutes
+    - **Total RTO**: 15 minutes
+
+    ### Recovery Point Objectives
+
+    - **Daily Backups**: 24 hours RPO
+    - **Continuous WAL Archiving**: 1 hour RPO (PostgreSQL)
+    - **Redis AOF**: 1 second RPO
+
+    ### Testing DR Plan
+
+    Run quarterly DR drills:
+    ```bash
+    ./scripts/dr-drill.sh
+    ```
+
+---
+# Multi-Region Failover Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: multi-region-config
+  namespace: llm-copilot
+data:
+  regions.yaml: |
+    primary:
+      region: us-east-1
+      cluster: llm-copilot-prod-us-east-1
+      endpoint: https://api.llmdevops.io
+      priority: 1
+
+    secondary:
+      region: us-west-2
+      cluster: llm-copilot-prod-us-west-2
+      endpoint: https://api-west.llmdevops.io
+      priority: 2
+
+    tertiary:
+      region: eu-west-1
+      cluster: llm-copilot-prod-eu-west-1
+      endpoint: https://api-eu.llmdevops.io
+      priority: 3
+
+    failover:
+      auto_failover: true
+      health_check_interval: 30s
+      failover_threshold: 3
+      fallback_delay: 300s
+
+---
+# External-DNS for automatic DNS failover
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: llm-copilot
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+  - kind: ServiceAccount
+    name: external-dns
+    namespace: llm-copilot
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: llm-copilot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: external-dns
+  template:
+    metadata:
+      labels:
+        app: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+        - name: external-dns
+          image: registry.k8s.io/external-dns/external-dns:v0.14.0
+          args:
+            - --source=service
+            - --source=ingress
+            - --domain-filter=llmdevops.io
+            - --provider=aws
+            - --policy=upsert-only
+            - --aws-zone-type=public
+            - --registry=txt
+            - --txt-owner-id=llm-copilot-prod
+            - --interval=1m
+          env:
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1

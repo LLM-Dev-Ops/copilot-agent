@@ -1,0 +1,264 @@
+---
+# Prometheus ServiceMonitor for automatic scraping
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: llm-copilot-agent
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: llm-copilot-agent
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+
+---
+# PodMonitor for direct pod monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: llm-copilot-agent
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  selector:
+    matchLabels:
+      app: llm-copilot-agent
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+
+---
+# PrometheusRule for alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: llm-copilot-agent-alerts
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+    prometheus: kube-prometheus
+spec:
+  groups:
+    - name: llm-copilot-agent.availability
+      interval: 30s
+      rules:
+        # High error rate
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{job="llm-copilot-agent",status=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{job="llm-copilot-agent"}[5m]))
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+            component: llm-copilot-agent
+          annotations:
+            summary: "High error rate detected"
+            description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+        # Service down
+        - alert: ServiceDown
+          expr: up{job="llm-copilot-agent"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: llm-copilot-agent
+          annotations:
+            summary: "LLM CoPilot Agent is down"
+            description: "{{ $labels.instance }} has been down for more than 2 minutes"
+
+        # Low replica count
+        - alert: LowReplicaCount
+          expr: |
+            sum(up{job="llm-copilot-agent"}) < 2
+          for: 5m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "Low number of replicas"
+            description: "Only {{ $value }} replica(s) available (minimum: 2)"
+
+        # Pod restarts
+        - alert: FrequentPodRestarts
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="llm-copilot",pod=~"llm-copilot-agent.*"}[15m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "Frequent pod restarts detected"
+            description: "Pod {{ $labels.pod }} is restarting frequently"
+
+    - name: llm-copilot-agent.performance
+      interval: 30s
+      rules:
+        # High latency
+        - alert: HighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{job="llm-copilot-agent"}[5m])) by (le)
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "High request latency"
+            description: "95th percentile latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+
+        # High CPU usage
+        - alert: HighCPUUsage
+          expr: |
+            sum(rate(container_cpu_usage_seconds_total{namespace="llm-copilot",pod=~"llm-copilot-agent.*"}[5m]))
+            /
+            sum(kube_pod_container_resource_limits{namespace="llm-copilot",pod=~"llm-copilot-agent.*",resource="cpu"}) > 0.8
+          for: 15m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "High CPU usage"
+            description: "CPU usage is {{ $value | humanizePercentage }} of limits"
+
+        # High memory usage
+        - alert: HighMemoryUsage
+          expr: |
+            sum(container_memory_working_set_bytes{namespace="llm-copilot",pod=~"llm-copilot-agent.*"})
+            /
+            sum(kube_pod_container_resource_limits{namespace="llm-copilot",pod=~"llm-copilot-agent.*",resource="memory"}) > 0.85
+          for: 15m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "High memory usage"
+            description: "Memory usage is {{ $value | humanizePercentage }} of limits"
+
+    - name: llm-copilot-agent.sla
+      interval: 30s
+      rules:
+        # SLA breach - 99.9% uptime
+        - alert: SLABreach
+          expr: |
+            (
+              sum(rate(http_requests_total{job="llm-copilot-agent",status!~"5.."}[30m]))
+              /
+              sum(rate(http_requests_total{job="llm-copilot-agent"}[30m]))
+            ) < 0.999
+          for: 5m
+          labels:
+            severity: critical
+            component: llm-copilot-agent
+          annotations:
+            summary: "SLA breach detected"
+            description: "Success rate {{ $value | humanizePercentage }} is below 99.9% SLA"
+
+        # Response time SLA
+        - alert: ResponseTimeSLA
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket{job="llm-copilot-agent"}[5m])) by (le)
+            ) > 2
+          for: 10m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "Response time SLA breach"
+            description: "99th percentile response time is {{ $value | humanizeDuration }}"
+
+    - name: llm-copilot-agent.resources
+      interval: 30s
+      rules:
+        # Database connection pool exhaustion
+        - alert: DatabaseConnectionPoolExhaustion
+          expr: |
+            (
+              database_connections_active{service="llm-copilot-agent"}
+              /
+              database_connections_max{service="llm-copilot-agent"}
+            ) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "Database connection pool near exhaustion"
+            description: "Connection pool usage is {{ $value | humanizePercentage }}"
+
+        # Redis connection issues
+        - alert: RedisConnectionFailures
+          expr: |
+            rate(redis_connection_errors_total{service="llm-copilot-agent"}[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            component: llm-copilot-agent
+          annotations:
+            summary: "Redis connection failures detected"
+            description: "Redis connection error rate: {{ $value | humanize }} per second"
+
+---
+# Recording rules for common queries
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: llm-copilot-agent-recording-rules
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  groups:
+    - name: llm-copilot-agent.recording
+      interval: 30s
+      rules:
+        # Request rate
+        - record: llm_copilot:http_requests:rate5m
+          expr: |
+            sum(rate(http_requests_total{job="llm-copilot-agent"}[5m])) by (method, path, status)
+
+        # Error rate
+        - record: llm_copilot:http_errors:rate5m
+          expr: |
+            sum(rate(http_requests_total{job="llm-copilot-agent",status=~"5.."}[5m])) by (method, path)
+
+        # Latency percentiles
+        - record: llm_copilot:http_request_duration:p95
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{job="llm-copilot-agent"}[5m])) by (le, method, path)
+            )
+
+        - record: llm_copilot:http_request_duration:p99
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket{job="llm-copilot-agent"}[5m])) by (le, method, path)
+            )
+
+        # Availability
+        - record: llm_copilot:availability:5m
+          expr: |
+            sum(rate(http_requests_total{job="llm-copilot-agent",status!~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="llm-copilot-agent"}[5m]))

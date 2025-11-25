@@ -1,0 +1,472 @@
+# Alertmanager Configuration for LLM-CoPilot-Agent
+# Version: 1.0.0
+# Last Updated: 2025-11-25
+#
+# Alert routing, grouping, inhibition, and notification configuration
+
+---
+global:
+  # Default notification settings
+  resolve_timeout: 5m
+
+  # External URLs
+  http_config:
+    follow_redirects: true
+
+  # SMTP settings for email notifications
+  smtp_from: "alerts@llm-copilot-agent.internal"
+  smtp_smarthost: "smtp.internal:587"
+  smtp_auth_username: "alertmanager"
+  smtp_auth_password: "${SMTP_PASSWORD}"
+  smtp_require_tls: true
+
+  # PagerDuty global settings
+  pagerduty_url: "https://events.pagerduty.com/v2/enqueue"
+
+  # Slack global settings
+  slack_api_url: "https://slack.com/api/chat.postMessage"
+
+# ============================================================================
+# ROUTE CONFIGURATION
+# ============================================================================
+
+route:
+  # Default receiver
+  receiver: "default"
+
+  # Group alerts with same labels
+  group_by: ["alertname", "severity", "environment", "component"]
+
+  # Initial wait before sending notification (allows for grouping)
+  group_wait: 30s
+
+  # How long to wait before sending notification about new alerts
+  group_interval: 5m
+
+  # How long to wait before re-sending notification
+  repeat_interval: 4h
+
+  # Child routes
+  routes:
+    # ========================================================================
+    # CRITICAL ALERTS - Page immediately 24/7
+    # ========================================================================
+    - receiver: "pagerduty-critical"
+      matchers:
+        - severity = "critical"
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 30m
+      continue: true  # Also send to Slack
+      routes:
+        # Service down - highest priority
+        - receiver: "pagerduty-p0"
+          matchers:
+            - alertname =~ "ServiceDown|NoHealthyPods|DatabaseDown"
+          group_wait: 0s
+          repeat_interval: 15m
+
+        # SLO breach
+        - receiver: "pagerduty-p1"
+          matchers:
+            - alertname =~ "SLOAvailabilityBreach|ErrorBudgetBurnRateCritical"
+          group_wait: 5s
+          repeat_interval: 20m
+
+    # Send critical alerts to Slack as well
+    - receiver: "slack-critical"
+      matchers:
+        - severity = "critical"
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+
+    # ========================================================================
+    # HIGH SEVERITY ALERTS - Page during business hours
+    # ========================================================================
+    - receiver: "pagerduty-business-hours"
+      matchers:
+        - severity = "high"
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 2h
+      continue: true
+
+    - receiver: "slack-high"
+      matchers:
+        - severity = "high"
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 2h
+
+    # ========================================================================
+    # WARNING ALERTS - Slack notifications
+    # ========================================================================
+    - receiver: "slack-warnings"
+      matchers:
+        - severity = "warning"
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 6h
+
+    # ========================================================================
+    # INFO ALERTS - Minimal notifications
+    # ========================================================================
+    - receiver: "slack-info"
+      matchers:
+        - severity = "info"
+      group_wait: 5m
+      group_interval: 30m
+      repeat_interval: 24h
+
+    # ========================================================================
+    # COMPONENT-SPECIFIC ROUTES
+    # ========================================================================
+
+    # Database alerts
+    - receiver: "slack-database"
+      matchers:
+        - component = "database"
+      group_by: ["alertname", "component"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 2h
+
+    # LLM API alerts
+    - receiver: "slack-llm"
+      matchers:
+        - component = "llm"
+      group_by: ["alertname", "component", "provider"]
+      group_wait: 1m
+      group_interval: 5m
+      repeat_interval: 3h
+
+    # Security alerts
+    - receiver: "slack-security"
+      matchers:
+        - team = "security"
+      group_by: ["alertname"]
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+
+    # Cost alerts
+    - receiver: "slack-cost"
+      matchers:
+        - component = "cost"
+      group_by: ["alertname"]
+      group_wait: 5m
+      group_interval: 1h
+      repeat_interval: 24h
+
+    # ========================================================================
+    # MAINTENANCE WINDOW - Suppress non-critical alerts
+    # ========================================================================
+    - receiver: "null"
+      matchers:
+        - maintenance_window = "true"
+        - severity != "critical"
+      continue: false
+
+# ============================================================================
+# INHIBITION RULES
+# ============================================================================
+# Suppress alerts when higher-priority alerts are firing
+
+inhibit_rules:
+  # If service is down, suppress all other alerts for that service
+  - source_matchers:
+      - alertname =~ "ServiceDown|NoHealthyPods"
+    target_matchers:
+      - severity =~ "warning|high|critical"
+    equal:
+      - environment
+      - service
+
+  # If database is down, suppress connection pool alerts
+  - source_matchers:
+      - alertname = "DatabaseDown"
+    target_matchers:
+      - alertname = "DatabaseConnectionPoolExhausted"
+    equal:
+      - environment
+
+  # If there's an SLO breach, suppress error budget burn rate alerts
+  - source_matchers:
+      - alertname = "SLOAvailabilityBreach"
+    target_matchers:
+      - alertname =~ "ErrorBudgetBurn.*"
+    equal:
+      - environment
+
+  # If there's a critical error budget burn, suppress lower severity burns
+  - source_matchers:
+      - alertname = "ErrorBudgetBurnRateCritical"
+    target_matchers:
+      - alertname =~ "ErrorBudgetBurnRate(High|Warning)"
+    equal:
+      - environment
+
+  # If circuit breaker is open, suppress module integration failures
+  - source_matchers:
+      - alertname = "CircuitBreakerOpen"
+    target_matchers:
+      - alertname = "ModuleIntegrationFailure"
+    equal:
+      - module
+
+  # If there's extreme latency, suppress high latency warnings
+  - source_matchers:
+      - alertname = "ExtremeLatency"
+    target_matchers:
+      - alertname =~ "HighLatency.*"
+    equal:
+      - environment
+
+# ============================================================================
+# RECEIVERS
+# ============================================================================
+
+receivers:
+  # Default receiver (catch-all)
+  - name: "default"
+    email_configs:
+      - to: "devops-team@internal.com"
+        headers:
+          Subject: "LLM-CoPilot-Agent Alert: {{ .GroupLabels.alertname }}"
+        html: "{{ template \"email.default.html\" . }}"
+
+  # ========================================================================
+  # PAGERDUTY RECEIVERS
+  # ========================================================================
+
+  # P0 - Critical incidents (ServiceDown, etc.)
+  - name: "pagerduty-p0"
+    pagerduty_configs:
+      - service_key: "${PAGERDUTY_P0_SERVICE_KEY}"
+        routing_key: "${PAGERDUTY_P0_ROUTING_KEY}"
+        description: "{{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}"
+        severity: "critical"
+        details:
+          firing: "{{ .Alerts.Firing | len }}"
+          environment: "{{ .GroupLabels.environment }}"
+          summary: "{{ .CommonAnnotations.summary }}"
+          description: "{{ .CommonAnnotations.description }}"
+          runbook: "{{ .CommonAnnotations.runbook }}"
+          dashboard: "{{ .CommonAnnotations.dashboard }}"
+        links:
+          - href: "{{ .CommonAnnotations.dashboard }}"
+            text: "View Dashboard"
+          - href: "{{ .CommonAnnotations.runbook }}"
+            text: "View Runbook"
+
+  # P1 - High priority incidents
+  - name: "pagerduty-p1"
+    pagerduty_configs:
+      - service_key: "${PAGERDUTY_P1_SERVICE_KEY}"
+        routing_key: "${PAGERDUTY_P1_ROUTING_KEY}"
+        description: "{{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}"
+        severity: "error"
+        details:
+          firing: "{{ .Alerts.Firing | len }}"
+          environment: "{{ .GroupLabels.environment }}"
+          summary: "{{ .CommonAnnotations.summary }}"
+
+  # General critical alerts
+  - name: "pagerduty-critical"
+    pagerduty_configs:
+      - service_key: "${PAGERDUTY_CRITICAL_SERVICE_KEY}"
+        routing_key: "${PAGERDUTY_CRITICAL_ROUTING_KEY}"
+        description: "{{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}"
+        severity: "critical"
+
+  # Business hours only
+  - name: "pagerduty-business-hours"
+    pagerduty_configs:
+      - service_key: "${PAGERDUTY_BUSINESS_HOURS_SERVICE_KEY}"
+        routing_key: "${PAGERDUTY_BUSINESS_HOURS_ROUTING_KEY}"
+        description: "{{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}"
+        severity: "warning"
+
+  # ========================================================================
+  # SLACK RECEIVERS
+  # ========================================================================
+
+  # Critical alerts channel
+  - name: "slack-critical"
+    slack_configs:
+      - channel: "#incidents"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":fire:"
+        title: ":fire: Critical Alert: {{ .GroupLabels.alertname }}"
+        text: |
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Environment:* {{ .GroupLabels.environment }}
+          *Severity:* {{ .GroupLabels.severity }}
+          *Firing Alerts:* {{ .Alerts.Firing | len }}
+
+          *Description:*
+          {{ .CommonAnnotations.description }}
+
+          *Impact:*
+          {{ .CommonAnnotations.impact }}
+
+          *Action Required:*
+          {{ .CommonAnnotations.action }}
+        actions:
+          - type: "button"
+            text: "View Dashboard"
+            url: "{{ .CommonAnnotations.dashboard }}"
+          - type: "button"
+            text: "View Runbook"
+            url: "{{ .CommonAnnotations.runbook }}"
+        color: "danger"
+        send_resolved: true
+
+  # High severity alerts
+  - name: "slack-high"
+    slack_configs:
+      - channel: "#reliability"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":warning:"
+        title: ":warning: High Priority Alert: {{ .GroupLabels.alertname }}"
+        text: |
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Environment:* {{ .GroupLabels.environment }}
+          *Component:* {{ .GroupLabels.component }}
+        color: "warning"
+        send_resolved: true
+
+  # Warning alerts
+  - name: "slack-warnings"
+    slack_configs:
+      - channel: "#reliability"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":large_yellow_circle:"
+        title: "Warning: {{ .GroupLabels.alertname }}"
+        text: "{{ .CommonAnnotations.summary }}"
+        color: "warning"
+        send_resolved: true
+
+  # Info alerts
+  - name: "slack-info"
+    slack_configs:
+      - channel: "#monitoring-info"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":information_source:"
+        title: "Info: {{ .GroupLabels.alertname }}"
+        text: "{{ .CommonAnnotations.summary }}"
+        color: "good"
+        send_resolved: false
+
+  # Database-specific alerts
+  - name: "slack-database"
+    slack_configs:
+      - channel: "#database-alerts"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":database:"
+        title: "Database Alert: {{ .GroupLabels.alertname }}"
+        text: "{{ .CommonAnnotations.summary }}"
+
+  # LLM API alerts
+  - name: "slack-llm"
+    slack_configs:
+      - channel: "#llm-monitoring"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":robot_face:"
+        title: "LLM Alert: {{ .GroupLabels.alertname }}"
+        text: |
+          *Provider:* {{ .GroupLabels.provider }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+
+  # Security alerts
+  - name: "slack-security"
+    slack_configs:
+      - channel: "#security-alerts"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":lock:"
+        title: ":lock: Security Alert: {{ .GroupLabels.alertname }}"
+        text: "{{ .CommonAnnotations.summary }}"
+        color: "danger"
+
+  # Cost alerts
+  - name: "slack-cost"
+    slack_configs:
+      - channel: "#cost-monitoring"
+        api_url: "${SLACK_WEBHOOK_URL}"
+        username: "AlertManager"
+        icon_emoji: ":moneybag:"
+        title: "Cost Alert: {{ .GroupLabels.alertname }}"
+        text: "{{ .CommonAnnotations.summary }}"
+
+  # Null receiver (for silencing)
+  - name: "null"
+
+# ============================================================================
+# TEMPLATES
+# ============================================================================
+
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+# ============================================================================
+# TIME INTERVALS
+# ============================================================================
+
+time_intervals:
+  # Business hours: Monday-Friday, 9am-5pm EST
+  - name: "business_hours"
+    time_intervals:
+      - times:
+          - start_time: "09:00"
+            end_time: "17:00"
+        weekdays: ["monday:friday"]
+        location: "America/New_York"
+
+  # Off-hours
+  - name: "off_hours"
+    time_intervals:
+      - times:
+          - start_time: "17:00"
+            end_time: "09:00"
+        weekdays: ["monday:friday"]
+        location: "America/New_York"
+      - weekdays: ["saturday", "sunday"]
+
+  # Maintenance window (example)
+  - name: "maintenance_window"
+    time_intervals:
+      - times:
+          - start_time: "02:00"
+            end_time: "04:00"
+        weekdays: ["sunday"]
+        location: "America/New_York"
+
+# ============================================================================
+# MUTE TIME INTERVALS
+# ============================================================================
+
+mute_time_intervals:
+  # Mute low-priority alerts during maintenance
+  - name: "maintenance_mute"
+    time_intervals:
+      - times:
+          - start_time: "02:00"
+            end_time: "04:00"
+        weekdays: ["sunday"]
+
+# ============================================================================
+# NOTIFICATION TEMPLATES
+# ============================================================================
+
+# See separate template files in /etc/alertmanager/templates/
+# - email.default.html
+# - slack.default.tmpl
+# - pagerduty.default.tmpl

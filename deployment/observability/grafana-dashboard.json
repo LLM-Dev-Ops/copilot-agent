@@ -1,0 +1,261 @@
+{
+  "dashboard": {
+    "title": "LLM CoPilot Agent - Overview",
+    "tags": ["llm-copilot", "devops", "production"],
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "rows": [
+      {
+        "title": "Service Health",
+        "panels": [
+          {
+            "title": "Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{job=\"llm-copilot-agent\"}[5m])) by (status)",
+                "legendFormat": "{{status}}"
+              }
+            ],
+            "yaxes": [
+              {"format": "reqps", "label": "Requests/sec"}
+            ]
+          },
+          {
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{job=\"llm-copilot-agent\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"llm-copilot-agent\"}[5m]))",
+                "legendFormat": "Error Rate"
+              }
+            ],
+            "yaxes": [
+              {"format": "percentunit", "label": "Error %"}
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": {"params": [0.05], "type": "gt"},
+                  "operator": {"type": "and"},
+                  "query": {"params": ["A", "5m", "now"]},
+                  "reducer": {"params": [], "type": "avg"},
+                  "type": "query"
+                }
+              ]
+            }
+          },
+          {
+            "title": "Response Time (p95, p99)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"llm-copilot-agent\"}[5m])) by (le))",
+                "legendFormat": "p95"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"llm-copilot-agent\"}[5m])) by (le))",
+                "legendFormat": "p99"
+              }
+            ],
+            "yaxes": [
+              {"format": "s", "label": "Duration"}
+            ]
+          },
+          {
+            "title": "Active Pods",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(up{job=\"llm-copilot-agent\"})"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "thresholds": {
+                  "steps": [
+                    {"value": 0, "color": "red"},
+                    {"value": 2, "color": "yellow"},
+                    {"value": 3, "color": "green"}
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "title": "Resource Usage",
+        "panels": [
+          {
+            "title": "CPU Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"llm-copilot\",pod=~\"llm-copilot-agent.*\"}[5m])) by (pod)",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "yaxes": [
+              {"format": "percentunit", "label": "CPU"}
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(container_memory_working_set_bytes{namespace=\"llm-copilot\",pod=~\"llm-copilot-agent.*\"}) by (pod)",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "yaxes": [
+              {"format": "bytes", "label": "Memory"}
+            ]
+          },
+          {
+            "title": "Network I/O",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_network_receive_bytes_total{namespace=\"llm-copilot\",pod=~\"llm-copilot-agent.*\"}[5m])) by (pod)",
+                "legendFormat": "RX {{pod}}"
+              },
+              {
+                "expr": "sum(rate(container_network_transmit_bytes_total{namespace=\"llm-copilot\",pod=~\"llm-copilot-agent.*\"}[5m])) by (pod)",
+                "legendFormat": "TX {{pod}}"
+              }
+            ],
+            "yaxes": [
+              {"format": "Bps", "label": "Bytes/sec"}
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Dependencies",
+        "panels": [
+          {
+            "title": "Database Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "database_connections_active{service=\"llm-copilot-agent\"}",
+                "legendFormat": "Active"
+              },
+              {
+                "expr": "database_connections_idle{service=\"llm-copilot-agent\"}",
+                "legendFormat": "Idle"
+              },
+              {
+                "expr": "database_connections_max{service=\"llm-copilot-agent\"}",
+                "legendFormat": "Max"
+              }
+            ]
+          },
+          {
+            "title": "Redis Operations",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(redis_commands_total{service=\"llm-copilot-agent\"}[5m])) by (command)",
+                "legendFormat": "{{command}}"
+              }
+            ]
+          },
+          {
+            "title": "External API Latency",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(external_api_duration_seconds_bucket{service=\"llm-copilot-agent\"}[5m])) by (le, api))",
+                "legendFormat": "{{api}} p95"
+              }
+            ],
+            "yaxes": [
+              {"format": "s", "label": "Duration"}
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Business Metrics",
+        "panels": [
+          {
+            "title": "Requests by Endpoint",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{job=\"llm-copilot-agent\"}[5m])) by (path)",
+                "legendFormat": "{{path}}"
+              }
+            ]
+          },
+          {
+            "title": "Module Interactions",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(module_requests_total{service=\"llm-copilot-agent\"}[5m])) by (target_module)",
+                "legendFormat": "{{target_module}}"
+              }
+            ]
+          },
+          {
+            "title": "Test Generation Requests",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(increase(test_generation_requests_total{service=\"llm-copilot-agent\"}[1h]))"
+              }
+            ]
+          },
+          {
+            "title": "Incident Detections",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(increase(incident_detections_total{service=\"llm-copilot-agent\"}[1h]))"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "namespace",
+          "type": "query",
+          "query": "label_values(kube_pod_info, namespace)",
+          "current": {"text": "llm-copilot", "value": "llm-copilot"}
+        },
+        {
+          "name": "pod",
+          "type": "query",
+          "query": "label_values(kube_pod_info{namespace=\"$namespace\"}, pod)",
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Prometheus",
+          "expr": "changes(kube_deployment_status_observed_generation{namespace=\"llm-copilot\",deployment=\"llm-copilot-agent\"}[5m]) > 0",
+          "tagKeys": "deployment",
+          "textFormat": "Deployment",
+          "iconColor": "blue"
+        }
+      ]
+    }
+  }
+}

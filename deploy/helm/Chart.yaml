@@ -1,0 +1,92 @@
+apiVersion: v2
+name: llm-copilot-agent
+description: A Helm chart for LLM CoPilot Agent - An intelligent agent framework for LLM-powered applications
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - llm
+  - copilot
+  - agent
+  - rust
+  - ai
+  - machine-learning
+
+home: https://github.com/llm-devops/llm-copilot-agent
+sources:
+  - https://github.com/llm-devops/llm-copilot-agent
+
+maintainers:
+  - name: LLM DevOps Team
+    email: devops@example.com
+    url: https://github.com/llm-devops
+
+icon: https://example.com/logo.png
+
+annotations:
+  # Category for Helm Hub
+  category: ApplicationFramework
+
+  # Helm Documentation
+  artifacthub.io/license: Commercial
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release of LLM CoPilot Agent
+    - kind: added
+      description: Support for multiple LLM providers (OpenAI, Anthropic, Google AI)
+    - kind: added
+      description: Redis caching and NATS messaging integration
+    - kind: added
+      description: Comprehensive monitoring with Prometheus and Grafana
+
+  # Security
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/prerelease: "false"
+
+  # Links
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://docs.example.com/llm-copilot-agent
+    - name: Support
+      url: https://github.com/llm-devops/llm-copilot-agent/issues
+
+  # Screenshots
+  artifacthub.io/screenshots: |
+    - title: Dashboard
+      url: https://example.com/screenshots/dashboard.png
+    - title: Metrics
+      url: https://example.com/screenshots/metrics.png
+
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+    tags:
+      - database
+
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+
+  - name: prometheus
+    version: "25.x.x"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+    tags:
+      - monitoring
+
+  - name: grafana
+    version: "7.x.x"
+    repository: https://grafana.github.io/helm-charts
+    condition: grafana.enabled
+    tags:
+      - monitoring
+
+kubeVersion: ">=1.24.0-0"
+
+deprecated: false

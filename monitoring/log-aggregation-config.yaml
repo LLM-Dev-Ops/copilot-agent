@@ -1,0 +1,639 @@
+# Log Aggregation Configuration for LLM-CoPilot-Agent
+# Version: 1.0.0
+# Last Updated: 2025-11-25
+#
+# Structured logging format, log levels, correlation ID tracking,
+# and log-based alerting configuration for Loki/Elasticsearch
+
+---
+# ============================================================================
+# STRUCTURED LOG FORMAT
+# ============================================================================
+
+structured_log_format:
+  format: "json"
+  encoding: "utf-8"
+
+  required_fields:
+    timestamp:
+      format: "ISO8601"
+      field_name: "timestamp"
+      example: "2025-11-25T10:30:45.123Z"
+
+    level:
+      field_name: "level"
+      values: ["DEBUG", "INFO", "WARN", "ERROR", "FATAL"]
+      example: "INFO"
+
+    message:
+      field_name: "message"
+      type: "string"
+      max_length: 4096
+      example: "Request processed successfully"
+
+    service:
+      field_name: "service"
+      value: "llm-copilot-agent"
+      immutable: true
+
+    version:
+      field_name: "version"
+      source: "process.env.APP_VERSION"
+      example: "1.0.0"
+
+    environment:
+      field_name: "environment"
+      source: "process.env.NODE_ENV"
+      values: ["development", "staging", "production"]
+
+  contextual_fields:
+    # Request correlation
+    correlation_id:
+      field_name: "correlation_id"
+      format: "uuid_v4"
+      example: "550e8400-e29b-41d4-a716-446655440000"
+      description: "Unique ID for request tracing across services"
+      required: true
+
+    trace_id:
+      field_name: "trace_id"
+      format: "hex_32"
+      example: "4bf92f3577b34da6a3ce929d0e0e4736"
+      description: "OpenTelemetry trace ID"
+      required: false
+
+    span_id:
+      field_name: "span_id"
+      format: "hex_16"
+      example: "00f067aa0ba902b7"
+      description: "OpenTelemetry span ID"
+      required: false
+
+    # Request context
+    request_id:
+      field_name: "request_id"
+      format: "uuid_v4"
+      example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      description: "HTTP request ID"
+
+    user_id:
+      field_name: "user_id"
+      type: "string"
+      description: "Authenticated user identifier"
+      pii: false  # Should be hashed or anonymized
+
+    session_id:
+      field_name: "session_id"
+      format: "uuid_v4"
+      description: "User session identifier"
+
+    # Technical context
+    component:
+      field_name: "component"
+      type: "string"
+      example: "intent-classifier"
+      description: "Component/module generating the log"
+
+    function:
+      field_name: "function"
+      type: "string"
+      example: "processUserQuery"
+      description: "Function/method name"
+
+    file:
+      field_name: "file"
+      type: "string"
+      example: "src/services/intent-classifier.ts"
+      description: "Source file path"
+
+    line:
+      field_name: "line"
+      type: "integer"
+      example: 145
+      description: "Source line number"
+
+    # Infrastructure context
+    pod_name:
+      field_name: "pod_name"
+      source: "process.env.POD_NAME"
+      example: "llm-copilot-agent-7d8f9c5b6d-xkj2p"
+
+    node_name:
+      field_name: "node_name"
+      source: "process.env.NODE_NAME"
+      example: "ip-10-0-1-45.ec2.internal"
+
+    region:
+      field_name: "region"
+      source: "process.env.AWS_REGION"
+      example: "us-east-1"
+
+  performance_fields:
+    duration_ms:
+      field_name: "duration_ms"
+      type: "number"
+      unit: "milliseconds"
+      example: 245
+      description: "Operation duration"
+
+    http_method:
+      field_name: "http.method"
+      values: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+
+    http_status:
+      field_name: "http.status"
+      type: "integer"
+      example: 200
+
+    http_path:
+      field_name: "http.path"
+      type: "string"
+      example: "/api/v1/conversations"
+
+    http_user_agent:
+      field_name: "http.user_agent"
+      type: "string"
+      truncate: 256
+
+  error_fields:
+    error_type:
+      field_name: "error.type"
+      type: "string"
+      example: "ValidationError"
+      description: "Error class name"
+
+    error_message:
+      field_name: "error.message"
+      type: "string"
+      max_length: 2048
+      description: "Error message"
+
+    error_stack:
+      field_name: "error.stack"
+      type: "string"
+      max_length: 8192
+      description: "Stack trace"
+      log_levels: ["ERROR", "FATAL"]
+
+    error_code:
+      field_name: "error.code"
+      type: "string"
+      example: "ERR_INVALID_INPUT"
+      description: "Application error code"
+
+# ============================================================================
+# LOG LEVELS AND USAGE GUIDELINES
+# ============================================================================
+
+log_levels:
+
+  FATAL:
+    numeric_value: 60
+    description: "Service is unusable, requires immediate attention"
+    usage:
+      - "Application crash"
+      - "Critical dependency failure (database completely down)"
+      - "Unrecoverable state"
+    examples:
+      - "Unable to connect to database after all retries"
+      - "Out of memory, process terminating"
+      - "Configuration file missing, cannot start"
+    color: "red"
+    alert: true
+    page: true
+
+  ERROR:
+    numeric_value: 50
+    description: "Error occurred but service continues"
+    usage:
+      - "Request failed due to error"
+      - "External API call failed"
+      - "Database query error"
+      - "Validation failures"
+    examples:
+      - "Failed to process user request: Invalid input"
+      - "LLM API returned 500 error"
+      - "Database connection timeout"
+    color: "red"
+    alert: true
+    page: false
+
+  WARN:
+    numeric_value: 40
+    description: "Potentially harmful situations"
+    usage:
+      - "Deprecated API usage"
+      - "Performance degradation"
+      - "Resource limits approaching"
+      - "Recoverable errors"
+    examples:
+      - "LLM API rate limit approaching (80%)"
+      - "Database connection pool 90% utilized"
+      - "Slow query detected (>1s)"
+      - "Retry attempt 3/5"
+    color: "yellow"
+    alert: false
+
+  INFO:
+    numeric_value: 30
+    description: "Normal operational messages"
+    usage:
+      - "Request/response logging"
+      - "Service lifecycle events"
+      - "Business events"
+      - "Configuration changes"
+    examples:
+      - "User session created: session_id=123"
+      - "Workflow executed successfully: workflow_id=456"
+      - "Test generation completed: 15 tests created"
+      - "Service started on port 3000"
+    color: "green"
+    alert: false
+
+  DEBUG:
+    numeric_value: 20
+    description: "Detailed diagnostic information"
+    usage:
+      - "Variable values"
+      - "Execution flow"
+      - "Detailed performance metrics"
+      - "Development debugging"
+    examples:
+      - "Intent classification result: {intent: 'test_generation', confidence: 0.95}"
+      - "Cache miss for key: user_context_123"
+      - "Entering function: processUserQuery"
+    color: "blue"
+    alert: false
+    production: false  # Typically disabled in production
+
+  TRACE:
+    numeric_value: 10
+    description: "Very detailed diagnostic information"
+    usage:
+      - "Full request/response bodies"
+      - "Detailed execution traces"
+      - "Performance profiling"
+    examples:
+      - "LLM request payload: {...}"
+      - "Database query: SELECT * FROM..."
+    color: "gray"
+    alert: false
+    production: false  # Disabled in production
+
+# ============================================================================
+# LOG LEVEL CONFIGURATION BY ENVIRONMENT
+# ============================================================================
+
+environment_log_levels:
+
+  development:
+    default: "DEBUG"
+    components:
+      intent-classifier: "DEBUG"
+      llm-client: "DEBUG"
+      database: "DEBUG"
+      cache: "DEBUG"
+
+  staging:
+    default: "INFO"
+    components:
+      intent-classifier: "INFO"
+      llm-client: "DEBUG"
+      database: "INFO"
+      cache: "INFO"
+
+  production:
+    default: "INFO"
+    components:
+      intent-classifier: "INFO"
+      llm-client: "INFO"
+      database: "WARN"
+      cache: "WARN"
+      # Enable DEBUG for specific troubleshooting
+      # incident-manager: "DEBUG"
+
+# ============================================================================
+# CORRELATION ID TRACKING
+# ============================================================================
+
+correlation_tracking:
+
+  generation:
+    method: "uuid_v4"
+    header_name: "X-Correlation-ID"
+    fallback: "generate_new_id"
+    propagate_to_modules: true
+
+  propagation:
+    http_headers:
+      incoming:
+        - "X-Correlation-ID"
+        - "X-Request-ID"
+        - "X-Trace-ID"
+
+      outgoing:
+        - "X-Correlation-ID"
+        - "X-Request-ID"
+        - "X-Parent-Span-ID"
+
+    grpc_metadata:
+      - "correlation-id"
+      - "trace-id"
+      - "span-id"
+
+  storage:
+    thread_local: true  # Node.js AsyncLocalStorage
+    context_manager: "AsyncLocalStorage"
+
+  inclusion:
+    all_logs: true
+    metrics: true
+    traces: true
+    error_reports: true
+
+# ============================================================================
+# LOG SAMPLING (Production Optimization)
+# ============================================================================
+
+log_sampling:
+
+  enabled: true
+  environments: ["production"]
+
+  rules:
+    # Sample high-volume INFO logs
+    - level: "INFO"
+      rate: 0.1  # Log 10% of INFO messages
+      exceptions:
+        - component: "http-server"  # Always log HTTP requests
+          rate: 1.0
+        - message_pattern: "^(Service started|Shutdown)"
+          rate: 1.0
+
+    # Always log ERROR and above
+    - level: "ERROR"
+      rate: 1.0
+
+    - level: "FATAL"
+      rate: 1.0
+
+    # Sample DEBUG (if accidentally enabled)
+    - level: "DEBUG"
+      rate: 0.01  # Log 1% of DEBUG messages
+
+# ============================================================================
+# LOG-BASED ALERTING
+# ============================================================================
+
+log_based_alerts:
+
+  high_error_rate:
+    name: "HighErrorLogRate"
+    description: "High rate of ERROR level logs"
+    query: 'rate({service="llm-copilot-agent",level="ERROR"}[5m])'
+    threshold: "> 1"  # More than 1 error/second
+    duration: "5m"
+    severity: "warning"
+    labels:
+      team: "platform"
+      alert_type: "log-based"
+
+  fatal_errors:
+    name: "FatalErrorDetected"
+    description: "FATAL level log detected"
+    query: 'count_over_time({service="llm-copilot-agent",level="FATAL"}[1m])'
+    threshold: "> 0"
+    duration: "0m"  # Immediate
+    severity: "critical"
+    labels:
+      team: "platform"
+      pagerduty: "true"
+
+  database_errors:
+    name: "DatabaseErrorSpike"
+    description: "High rate of database-related errors"
+    query: 'rate({service="llm-copilot-agent",component="database",level="ERROR"}[5m])'
+    threshold: "> 0.5"
+    duration: "5m"
+    severity: "high"
+    labels:
+      team: "platform"
+      component: "database"
+
+  llm_api_failures:
+    name: "LLMAPIFailureRate"
+    description: "High failure rate for LLM API calls"
+    query: 'rate({service="llm-copilot-agent",component="llm-client",level="ERROR"}[5m])'
+    threshold: "> 0.5"
+    duration: "10m"
+    severity: "high"
+    labels:
+      team: "platform"
+      component: "llm"
+
+  oom_kills:
+    name: "OutOfMemoryKill"
+    description: "Process killed due to OOM"
+    query: 'count_over_time({service="llm-copilot-agent"} |~ "out of memory|OOM killed"[5m])'
+    threshold: "> 0"
+    duration: "0m"
+    severity: "critical"
+    labels:
+      team: "platform"
+      pagerduty: "true"
+
+  slow_queries:
+    name: "SlowDatabaseQueries"
+    description: "High rate of slow query warnings"
+    query: 'rate({service="llm-copilot-agent",component="database"} |~ "slow query"[5m])'
+    threshold: "> 1"
+    duration: "10m"
+    severity: "warning"
+    labels:
+      team: "platform"
+      component: "database"
+
+  authentication_failures:
+    name: "AuthenticationFailureSpike"
+    description: "Unusual number of authentication failures"
+    query: 'rate({service="llm-copilot-agent"} |~ "authentication failed|unauthorized"[5m])'
+    threshold: "> 5"
+    duration: "5m"
+    severity: "warning"
+    labels:
+      team: "security"
+
+  circuit_breaker_open:
+    name: "CircuitBreakerOpen"
+    description: "Circuit breaker opened for module"
+    query: 'count_over_time({service="llm-copilot-agent"} |~ "circuit breaker opened"[5m])'
+    threshold: "> 0"
+    duration: "0m"
+    severity: "high"
+    labels:
+      team: "platform"
+
+# ============================================================================
+# RETENTION POLICIES
+# ============================================================================
+
+retention_policies:
+
+  production:
+    hot_tier:
+      duration: "7d"
+      description: "Recent logs in fast storage (SSD)"
+      query_performance: "high"
+
+    warm_tier:
+      duration: "23d"
+      description: "Older logs in slower storage"
+      query_performance: "medium"
+
+    cold_tier:
+      duration: "60d"
+      description: "Archive in S3/Glacier"
+      query_performance: "low"
+      compressed: true
+
+    total_retention: "90d"
+
+    exceptions:
+      - level: "FATAL"
+        retention: "365d"
+        description: "Keep fatal errors for annual review"
+
+      - level: "ERROR"
+        retention: "180d"
+        description: "Extended retention for error analysis"
+
+      - component: "audit"
+        retention: "2555d"  # 7 years for compliance
+        description: "Audit logs for compliance"
+
+  staging:
+    total_retention: "30d"
+    hot_tier: "7d"
+
+  development:
+    total_retention: "7d"
+    hot_tier: "7d"
+
+# ============================================================================
+# SENSITIVE DATA HANDLING
+# ============================================================================
+
+sensitive_data:
+
+  redaction_rules:
+    # Credit card numbers
+    - pattern: '\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'
+      replacement: "****-****-****-****"
+      description: "Credit card numbers"
+
+    # Email addresses
+    - pattern: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+      replacement: "***@***.***"
+      description: "Email addresses"
+
+    # API keys
+    - pattern: '(?i)(api[_-]?key|token|secret|password)[\s:=]+["\']?[\w\-]{20,}["\']?'
+      replacement: "***REDACTED***"
+      description: "API keys and tokens"
+
+    # AWS access keys
+    - pattern: 'AKIA[0-9A-Z]{16}'
+      replacement: "AKIA***REDACTED***"
+      description: "AWS access keys"
+
+    # IP addresses (optional - depends on requirements)
+    - pattern: '\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
+      replacement: "***.***.***"
+      description: "IP addresses"
+      enabled: false  # Enable if IP is considered PII
+
+  pii_fields:
+    - "user_email"
+    - "phone_number"
+    - "credit_card"
+    - "ssn"
+    - "passport_number"
+
+  compliance:
+    gdpr: true
+    hipaa: false
+    pci_dss: false
+
+# ============================================================================
+# LOG EXPORT CONFIGURATION
+# ============================================================================
+
+log_export:
+
+  loki:
+    enabled: true
+    endpoint: "http://loki-gateway.monitoring.svc.cluster.local:3100"
+    batch_size: 100
+    batch_wait: "1s"
+    max_retries: 3
+    compression: "snappy"
+    labels:
+      job: "llm-copilot-agent"
+      environment: "${NODE_ENV}"
+      region: "${AWS_REGION}"
+
+  elasticsearch:
+    enabled: false
+    endpoint: "https://elasticsearch.monitoring.svc.cluster.local:9200"
+    index_pattern: "llm-copilot-agent-%{+YYYY.MM.dd}"
+    bulk_size: 500
+    flush_interval: "5s"
+
+  cloudwatch:
+    enabled: false  # Enable for AWS deployments
+    log_group: "/aws/eks/llm-copilot-agent"
+    log_stream: "${POD_NAME}"
+    region: "${AWS_REGION}"
+
+  file:
+    enabled: true
+    path: "/var/log/llm-copilot-agent/app.log"
+    max_size: "100MB"
+    max_files: 10
+    compress: true
+
+# ============================================================================
+# LOG QUERY EXAMPLES
+# ============================================================================
+
+query_examples:
+
+  loki:
+    # All errors in last hour
+    - query: '{service="llm-copilot-agent",level="ERROR"}'
+      time_range: "1h"
+
+    # Errors for specific user session
+    - query: '{service="llm-copilot-agent",level="ERROR"} |= "session_id=123"'
+      time_range: "24h"
+
+    # Slow requests (>1s)
+    - query: '{service="llm-copilot-agent"} | json | duration_ms > 1000'
+      time_range: "1h"
+
+    # Trace all logs for a correlation ID
+    - query: '{service="llm-copilot-agent"} |= "correlation_id=550e8400"'
+      time_range: "24h"
+
+    # LLM API errors
+    - query: '{service="llm-copilot-agent",component="llm-client",level="ERROR"}'
+      time_range: "1h"
+
+  elasticsearch:
+    # Errors by component
+    - query: 'level:ERROR AND service:llm-copilot-agent'
+      aggregation: "terms:component"
+
+    # Average response time by endpoint
+    - query: 'service:llm-copilot-agent'
+      aggregation: "avg:duration_ms by http.path"

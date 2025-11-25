@@ -1,0 +1,527 @@
+# Prometheus Alert Rules for LLM-CoPilot-Agent
+# Version: 1.0.0
+# Last Updated: 2025-11-25
+#
+# Alert definitions organized by severity: critical, warning, info
+# Each alert includes condition, duration, runbook link, and escalation path
+
+groups:
+  # ==========================================================================
+  # CRITICAL ALERTS (Page immediately - 24/7)
+  # ==========================================================================
+  - name: critical_alerts
+    interval: 30s
+    rules:
+
+      # Service completely down
+      - alert: ServiceDown
+        expr: up{job="llm-copilot-agent"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: service
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "LLM-CoPilot-Agent service is down"
+          description: "Service {{ $labels.instance }} has been down for more than 2 minutes."
+          runbook: "https://wiki.internal/runbooks/service-down"
+          impact: "All API requests failing. Complete service outage."
+          action: "1. Check pod status\n2. Review recent deployments\n3. Check infrastructure health\n4. Escalate to on-call engineer"
+
+      # No healthy pods available
+      - alert: NoHealthyPods
+        expr: sum(up{job="llm-copilot-agent"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: kubernetes
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "No healthy pods available"
+          description: "All pods are unhealthy. Service is completely unavailable."
+          runbook: "https://wiki.internal/runbooks/no-healthy-pods"
+          impact: "Complete service outage affecting all users."
+          action: "Immediate rollback or emergency scaling required."
+
+      # SLO breach - Availability
+      - alert: SLOAvailabilityBreach
+        expr: sli:availability:ratio5m < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          component: slo
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "Availability SLO breached"
+          description: "Availability is {{ $value | humanizePercentage }}, below 99.9% SLO target."
+          runbook: "https://wiki.internal/runbooks/slo-breach-availability"
+          impact: "SLA at risk. Customer-facing impact."
+          action: "1. Identify cause of failures\n2. Implement mitigation\n3. Prepare customer communication"
+          dashboard: "https://grafana.internal/d/slo-dashboard"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: sli:error_rate:ratio5m > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: application
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }}, exceeding 5% threshold."
+          runbook: "https://wiki.internal/runbooks/high-error-rate"
+          impact: "Significant number of user requests failing."
+          action: "1. Check error logs\n2. Review recent changes\n3. Consider rollback"
+          query: "sum(rate(http_requests_total{status_code=~\"5..\"}[5m]))"
+
+      # Fast error budget burn
+      - alert: ErrorBudgetBurnRateCritical
+        expr: slo:error_budget:burn_rate_1h > 43.2
+        for: 5m
+        labels:
+          severity: critical
+          component: slo
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "Error budget burning critically fast"
+          description: "Error budget will be exhausted in 1 hour at current rate ({{ $value }}x normal)."
+          runbook: "https://wiki.internal/runbooks/error-budget-burn"
+          impact: "SLO breach imminent. Monthly error budget at risk."
+          action: "Immediate investigation and mitigation required."
+          current_budget: "{{ query \"slo:error_budget:remaining\" }}"
+
+      # Database unavailable
+      - alert: DatabaseDown
+        expr: up{job="postgresql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Database {{ $labels.instance }} is unreachable."
+          runbook: "https://wiki.internal/runbooks/database-down"
+          impact: "All database-dependent operations failing."
+          action: "1. Check database pod/instance\n2. Verify network connectivity\n3. Check failover status"
+
+      # Redis unavailable
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: cache
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis instance {{ $labels.instance }} is unreachable."
+          runbook: "https://wiki.internal/runbooks/redis-down"
+          impact: "Cache unavailable. Performance degradation expected."
+          action: "1. Check Redis pod/instance\n2. Verify network\n3. Monitor application behavior"
+
+      # Extreme latency
+      - alert: ExtremeLatency
+        expr: sli:latency:p95_5m > 5.0
+        for: 10m
+        labels:
+          severity: critical
+          component: performance
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "Extreme API latency detected"
+          description: "p95 latency is {{ $value }}s, far exceeding normal thresholds."
+          runbook: "https://wiki.internal/runbooks/extreme-latency"
+          impact: "Severe user experience degradation."
+          action: "1. Check for resource constraints\n2. Review slow queries\n3. Check external dependencies"
+
+      # Disk space critical
+      - alert: DiskSpaceCritical
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"}
+          / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining."
+          runbook: "https://wiki.internal/runbooks/disk-space-critical"
+          impact: "Risk of service failure due to disk full."
+          action: "1. Clean up logs\n2. Increase disk size\n3. Check for disk leaks"
+
+      # Memory critical
+      - alert: MemoryCritical
+        expr: |
+          (process_resident_memory_bytes /
+           (process_resident_memory_bytes + 1073741824)) > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          team: platform
+          pagerduty: "true"
+        annotations:
+          summary: "Critical memory usage on {{ $labels.pod_name }}"
+          description: "Memory usage at {{ $value | humanizePercentage }}."
+          runbook: "https://wiki.internal/runbooks/memory-critical"
+          impact: "Risk of OOM kill and service disruption."
+          action: "1. Check for memory leaks\n2. Restart pod if necessary\n3. Increase memory limits"
+
+  # ==========================================================================
+  # HIGH SEVERITY ALERTS (Page during business hours, escalate after 30min)
+  # ==========================================================================
+  - name: high_severity_alerts
+    interval: 30s
+    rules:
+
+      # Medium error budget burn
+      - alert: ErrorBudgetBurnRateHigh
+        expr: slo:error_budget:burn_rate_6h > 7.2
+        for: 15m
+        labels:
+          severity: high
+          component: slo
+          team: platform
+          pagerduty: "business-hours"
+        annotations:
+          summary: "Error budget burning faster than acceptable"
+          description: "Error budget will be exhausted in 6 hours at current rate ({{ $value }}x normal)."
+          runbook: "https://wiki.internal/runbooks/error-budget-burn"
+          impact: "SLO at risk if trend continues."
+          action: "Investigate and address error sources."
+
+      # High latency for simple requests
+      - alert: HighLatencySimpleRequests
+        expr: sli:latency:p95_5m:simple > 1.0
+        for: 10m
+        labels:
+          severity: high
+          component: performance
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "Simple requests exceeding latency SLO"
+          description: "p95 latency for simple requests is {{ $value }}s (target: <1s)."
+          runbook: "https://wiki.internal/runbooks/high-latency"
+          impact: "User experience degradation for basic operations."
+          action: "Investigate slow requests and optimize hot paths."
+
+      # High latency for complex requests
+      - alert: HighLatencyComplexRequests
+        expr: sli:latency:p95_5m:complex > 2.0
+        for: 10m
+        labels:
+          severity: high
+          component: performance
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "Complex requests exceeding latency SLO"
+          description: "p95 latency for complex requests is {{ $value }}s (target: <2s)."
+          runbook: "https://wiki.internal/runbooks/high-latency"
+          impact: "User experience degradation for advanced operations."
+          action: "Review LLM call latency and module integration performance."
+
+      # Pods crashing frequently
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total{pod=~"llm-copilot-agent.*"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: high
+          component: kubernetes
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod has restarted {{ $value }} times in the last 15 minutes."
+          runbook: "https://wiki.internal/runbooks/pod-crash-loop"
+          impact: "Reduced service capacity and potential instability."
+          action: "1. Check pod logs\n2. Review recent changes\n3. Check resource limits"
+
+      # Database connection pool exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: db:connection_pool:utilization_ratio > 0.9
+        for: 10m
+        labels:
+          severity: high
+          component: database
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Connection pool utilization at {{ $value | humanizePercentage }}."
+          runbook: "https://wiki.internal/runbooks/db-connection-pool"
+          impact: "New requests may be blocked waiting for connections."
+          action: "1. Check for connection leaks\n2. Increase pool size\n3. Optimize query patterns"
+
+      # LLM API high error rate
+      - alert: LLMAPIHighErrorRate
+        expr: (1 - llm:success_rate:ratio5m) > 0.1
+        for: 10m
+        labels:
+          severity: high
+          component: llm
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "High error rate from LLM API"
+          description: "LLM API error rate is {{ $value | humanizePercentage }}."
+          runbook: "https://wiki.internal/runbooks/llm-api-errors"
+          impact: "Degraded AI-powered features."
+          action: "1. Check LLM provider status\n2. Review rate limits\n3. Implement fallback strategies"
+
+      # Module integration failure
+      - alert: ModuleIntegrationFailure
+        expr: module:success_rate:ratio5m < 0.9
+        for: 10m
+        labels:
+          severity: high
+          component: integration
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "Module {{ $labels.module }} integration failing"
+          description: "Success rate for {{ $labels.module }} is {{ $value | humanizePercentage }}."
+          runbook: "https://wiki.internal/runbooks/module-integration-failure"
+          impact: "Degraded functionality for {{ $labels.module }} features."
+          action: "1. Check module health\n2. Review network connectivity\n3. Check authentication"
+
+  # ==========================================================================
+  # WARNING ALERTS (Notify via Slack during business hours)
+  # ==========================================================================
+  - name: warning_alerts
+    interval: 1m
+    rules:
+
+      # Slow error budget burn
+      - alert: ErrorBudgetBurnRateWarning
+        expr: slo:error_budget:burn_rate_3d > 0.6
+        for: 1h
+        labels:
+          severity: warning
+          component: slo
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "Error budget burning above normal rate"
+          description: "Error budget will be exhausted in 3 days at current rate ({{ $value }}x normal)."
+          runbook: "https://wiki.internal/runbooks/error-budget-burn"
+          impact: "SLO at risk by end of month."
+          action: "Review reliability trends and plan improvements."
+
+      # Error budget 50% consumed
+      - alert: ErrorBudget50PercentConsumed
+        expr: slo:error_budget:remaining < 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: slo
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "50% of monthly error budget consumed"
+          description: "{{ $value | humanizePercentage }} error budget remaining."
+          runbook: "https://wiki.internal/runbooks/error-budget-policy"
+          impact: "May need to reduce deployment frequency."
+          action: "Review recent incidents and implement reliability improvements."
+
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: instance:cpu:usage_percentage > 80
+        for: 15m
+        labels:
+          severity: warning
+          component: infrastructure
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "High CPU usage on {{ $labels.pod_name }}"
+          description: "CPU usage at {{ $value }}%."
+          runbook: "https://wiki.internal/runbooks/high-cpu"
+          impact: "Potential performance degradation."
+          action: "1. Check for CPU-intensive operations\n2. Consider scaling\n3. Review efficiency"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: instance:memory:usage_percentage > 80
+        for: 15m
+        labels:
+          severity: warning
+          component: infrastructure
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "High memory usage on {{ $labels.pod_name }}"
+          description: "Memory usage at {{ $value }}%."
+          runbook: "https://wiki.internal/runbooks/high-memory"
+          impact: "Risk of OOM if memory continues to grow."
+          action: "Monitor for memory leaks and consider increasing limits."
+
+      # Event loop lag
+      - alert: HighEventLoopLag
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(nodejs_eventloop_lag_seconds_bucket[5m])) by (le, pod_name)
+          ) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "High Node.js event loop lag on {{ $labels.pod_name }}"
+          description: "p95 event loop lag is {{ $value }}s."
+          runbook: "https://wiki.internal/runbooks/event-loop-lag"
+          impact: "Slow request processing and degraded performance."
+          action: "1. Identify blocking operations\n2. Optimize hot paths\n3. Consider worker threads"
+
+      # Cache hit rate low
+      - alert: LowCacheHitRate
+        expr: redis:cache:hit_ratio < 0.7
+        for: 30m
+        labels:
+          severity: warning
+          component: cache
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "Low Redis cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (target: >90%)."
+          runbook: "https://wiki.internal/runbooks/low-cache-hit-rate"
+          impact: "Increased database load and latency."
+          action: "1. Review cache strategy\n2. Adjust TTLs\n3. Warm up cache"
+
+      # LLM cost spike
+      - alert: LLMCostSpike
+        expr: |
+          llm:cost_rate:per_hour
+          > 1.5 * (avg_over_time(llm:cost_rate:per_hour[24h] offset 24h))
+        for: 1h
+        labels:
+          severity: warning
+          component: cost
+          team: platform
+          slack: "#cost-monitoring"
+        annotations:
+          summary: "LLM API cost spike detected"
+          description: "Current hourly cost ${{ $value }} is 50% higher than 24h average."
+          runbook: "https://wiki.internal/runbooks/llm-cost-spike"
+          impact: "Unexpected operational costs."
+          action: "1. Review usage patterns\n2. Check for abuse\n3. Optimize prompt efficiency"
+
+      # High GC time
+      - alert: HighGarbageCollectionTime
+        expr: |
+          rate(nodejs_gc_duration_seconds_sum[5m])
+          / rate(nodejs_gc_duration_seconds_count[5m]) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          component: performance
+          team: platform
+          slack: "#reliability"
+        annotations:
+          summary: "High garbage collection time on {{ $labels.pod_name }}"
+          description: "Average GC time is {{ $value }}s per collection."
+          runbook: "https://wiki.internal/runbooks/high-gc-time"
+          impact: "Performance degradation during GC pauses."
+          action: "1. Review memory usage patterns\n2. Tune GC settings\n3. Reduce object allocation"
+
+      # Deployment in progress
+      - alert: DeploymentInProgress
+        expr: |
+          kube_deployment_status_replicas_updated{deployment="llm-copilot-agent"}
+          !=
+          kube_deployment_status_replicas{deployment="llm-copilot-agent"}
+        for: 10m
+        labels:
+          severity: warning
+          component: deployment
+          team: platform
+          slack: "#deployments"
+        annotations:
+          summary: "Deployment taking longer than expected"
+          description: "Deployment has been in progress for over 10 minutes."
+          runbook: "https://wiki.internal/runbooks/stuck-deployment"
+          impact: "Potential deployment issue."
+          action: "Check deployment status and pod health."
+
+  # ==========================================================================
+  # INFO ALERTS (Log only, dashboard notifications)
+  # ==========================================================================
+  - name: info_alerts
+    interval: 5m
+    rules:
+
+      # Error budget 25% consumed
+      - alert: ErrorBudget25PercentConsumed
+        expr: slo:error_budget:remaining < 0.75
+        for: 5m
+        labels:
+          severity: info
+          component: slo
+          team: platform
+        annotations:
+          summary: "25% of monthly error budget consumed"
+          description: "{{ $value | humanizePercentage }} error budget remaining."
+          impact: "Normal consumption rate. Continue monitoring."
+
+      # New version deployed
+      - alert: NewVersionDeployed
+        expr: changes(kube_deployment_status_observed_generation{deployment="llm-copilot-agent"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: info
+          component: deployment
+          team: platform
+        annotations:
+          summary: "New version deployed"
+          description: "Deployment generation changed, indicating new version deployed."
+          action: "Monitor metrics for anomalies post-deployment."
+
+      # Scaling event
+      - alert: AutoScalingEvent
+        expr: changes(kube_deployment_status_replicas{deployment="llm-copilot-agent"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: info
+          component: autoscaling
+          team: platform
+        annotations:
+          summary: "Auto-scaling event occurred"
+          description: "Replica count changed from previous value."
+          action: "Verify scaling is appropriate for current load."
+
+      # Daily cost report
+      - alert: DailyLLMCostReport
+        expr: dashboard:llm:cost_today_usd > 0
+        for: 0m
+        labels:
+          severity: info
+          component: cost
+          team: platform
+        annotations:
+          summary: "Daily LLM cost: ${{ $value }}"
+          description: "Total LLM API costs for today."
+          action: "No action required. Daily cost tracking."
+
+# ==========================================================================
+# ALERTING CONFIGURATION
+# ==========================================================================
+
+# Routing configuration for Alertmanager
+# See alertmanager-config.yaml for complete routing rules

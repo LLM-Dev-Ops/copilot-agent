@@ -1,0 +1,264 @@
+---
+# ArgoCD Application for GitOps Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llm-copilot-agent
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app: llm-copilot-agent
+    environment: production
+spec:
+  project: llm-devops-ecosystem
+
+  # Source repository
+  source:
+    repoURL: https://github.com/llm-devops/llm-copilot-agent
+    targetRevision: HEAD
+    path: deployment/kubernetes/overlays/production
+
+    # Helm chart (alternative to kustomize)
+    # helm:
+    #   releaseName: llm-copilot-agent
+    #   valueFiles:
+    #     - values-production.yaml
+    #   parameters:
+    #     - name: image.tag
+    #       value: latest
+
+    # Kustomize
+    kustomize:
+      namePrefix: prod-
+      commonLabels:
+        environment: production
+      images:
+        - name: llmdevops/llm-copilot-agent
+          newTag: v1.0.0
+
+  # Destination cluster and namespace
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: llm-copilot
+
+  # Sync policy
+  syncPolicy:
+    automated:
+      prune: true  # Delete resources not in Git
+      selfHeal: true  # Automatically sync when cluster state differs
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Health assessment
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # Ignore HPA-managed replicas
+
+  # Rollback configuration
+  revisionHistoryLimit: 10
+
+---
+# ArgoCD AppProject for LLM DevOps Ecosystem
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: llm-devops-ecosystem
+  namespace: argocd
+spec:
+  description: LLM DevOps Ecosystem Applications
+
+  # Source repositories
+  sourceRepos:
+    - https://github.com/llm-devops/*
+    - https://charts.llmdevops.io
+
+  # Destination clusters
+  destinations:
+    - namespace: llm-copilot
+      server: https://kubernetes.default.svc
+    - namespace: llm-copilot-*
+      server: https://kubernetes.default.svc
+
+  # Cluster resource whitelist
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+
+  # Namespace resource whitelist
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Roles for RBAC
+  roles:
+    - name: developers
+      description: Developers can view and sync
+      policies:
+        - p, proj:llm-devops-ecosystem:developers, applications, get, llm-devops-ecosystem/*, allow
+        - p, proj:llm-devops-ecosystem:developers, applications, sync, llm-devops-ecosystem/*, allow
+      groups:
+        - llm-devops-developers
+
+    - name: operators
+      description: Operators have full access
+      policies:
+        - p, proj:llm-devops-ecosystem:operators, applications, *, llm-devops-ecosystem/*, allow
+      groups:
+        - llm-devops-operators
+
+---
+# Progressive Delivery with Argo Rollouts
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: llm-copilot-agent
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  replicas: 5
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: llm-copilot-agent
+
+  template:
+    metadata:
+      labels:
+        app: llm-copilot-agent
+        version: v1.0.0
+    spec:
+      # Same as deployment spec
+      containers:
+        - name: llm-copilot-agent
+          image: llmdevops/llm-copilot-agent:v1.0.0
+          # ... rest of container spec
+
+  # Canary strategy with traffic splitting
+  strategy:
+    canary:
+      # Canary service and stable service
+      canaryService: llm-copilot-agent-canary
+      stableService: llm-copilot-agent-stable
+
+      # Traffic routing via Istio
+      trafficRouting:
+        istio:
+          virtualService:
+            name: llm-copilot-agent
+            routes:
+              - primary
+
+      # Canary steps
+      steps:
+        # Step 1: Route 10% of traffic to canary
+        - setWeight: 10
+        - pause:
+            duration: 5m
+
+        # Step 2: Run analysis
+        - analysis:
+            templates:
+              - templateName: success-rate
+              - templateName: latency-p95
+            args:
+              - name: service-name
+                value: llm-copilot-agent
+
+        # Step 3: Increase to 25%
+        - setWeight: 25
+        - pause:
+            duration: 5m
+
+        # Step 4: Increase to 50%
+        - setWeight: 50
+        - pause:
+            duration: 10m
+
+        # Step 5: Increase to 75%
+        - setWeight: 75
+        - pause:
+            duration: 5m
+
+        # Step 6: Full rollout
+        - setWeight: 100
+
+      # Analysis during rollout
+      analysis:
+        templates:
+          - templateName: success-rate
+          - templateName: latency-p95
+        startingStep: 2
+        args:
+          - name: service-name
+            value: llm-copilot-agent
+
+---
+# Analysis Template for Success Rate
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: llm-copilot
+spec:
+  args:
+    - name: service-name
+    - name: prometheus-url
+      value: http://prometheus.observability.svc.cluster.local:9090
+  metrics:
+    - name: success-rate
+      interval: 1m
+      count: 5
+      successCondition: result[0] >= 0.95
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: "{{ args.prometheus-url }}"
+          query: |
+            sum(rate(http_requests_total{job="{{ args.service-name }}",status!~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="{{ args.service-name }}"}[5m]))
+
+---
+# Analysis Template for Latency
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency-p95
+  namespace: llm-copilot
+spec:
+  args:
+    - name: service-name
+    - name: prometheus-url
+      value: http://prometheus.observability.svc.cluster.local:9090
+  metrics:
+    - name: latency-p95
+      interval: 1m
+      count: 5
+      successCondition: result[0] <= 1.0  # 1 second
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: "{{ args.prometheus-url }}"
+          query: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{job="{{ args.service-name }}"}[5m])) by (le)
+            )

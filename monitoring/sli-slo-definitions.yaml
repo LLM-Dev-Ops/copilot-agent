@@ -1,0 +1,502 @@
+# LLM-CoPilot-Agent SLI/SLO Definitions
+# Version: 1.0.0
+# Last Updated: 2025-11-25
+#
+# Service Level Indicators (SLI) and Service Level Objectives (SLO) definitions
+# aligned with 99.9% uptime SLA requirement.
+
+---
+# ============================================================================
+# AVAILABILITY SLI/SLO
+# ============================================================================
+
+availability_slo:
+  name: "Service Availability"
+  description: "Percentage of successful requests over total requests"
+  objective: "99.9%"  # Three nines
+
+  sli_specification:
+    measurement_window: "30d"  # Rolling 30-day window
+    measurement_method: "request-based"
+
+    # Good events: HTTP status codes 2xx, 3xx, 429 (rate limit is expected)
+    # Bad events: HTTP status codes 4xx (except 429), 5xx, timeouts
+
+    sli_formula: |
+      sum(rate(http_requests_total{status_code=~"2..|3..|429"}[5m]))
+      /
+      sum(rate(http_requests_total[5m]))
+
+    exclusions:
+      - "Health check requests (/health, /ready, /live)"
+      - "Requests from synthetic monitors"
+      - "Requests during planned maintenance windows"
+
+  error_budget:
+    total_minutes_per_month: 43200  # 30 days * 24 hours * 60 minutes
+    allowed_downtime_minutes: 43.2  # 0.1% of total (99.9% uptime)
+    allowed_downtime_hours: 0.72
+
+    calculation: |
+      error_budget_remaining = 1 - (actual_availability / target_availability)
+      error_budget_consumed_percentage = (1 - error_budget_remaining) * 100
+
+  burn_rate_alerts:
+    # Fast burn: Exhausts error budget in 1 hour (43.2x multiplier)
+    - name: "ErrorBudgetBurnRateCritical"
+      severity: "critical"
+      burn_rate: 43.2
+      window: "1h"
+      threshold: 0.001  # 0.1% error rate sustained for 1h
+
+    # Medium burn: Exhausts error budget in 6 hours (7.2x multiplier)
+    - name: "ErrorBudgetBurnRateHigh"
+      severity: "high"
+      burn_rate: 7.2
+      window: "6h"
+      threshold: 0.0012
+
+    # Slow burn: Exhausts error budget in 3 days (0.6x multiplier)
+    - name: "ErrorBudgetBurnRateMedium"
+      severity: "warning"
+      burn_rate: 0.6
+      window: "3d"
+      threshold: 0.0006
+
+  dashboards:
+    - "Availability SLI Dashboard"
+    - "Error Budget Status"
+    - "Incident Impact on SLO"
+
+# ============================================================================
+# LATENCY SLI/SLO
+# ============================================================================
+
+latency_slo:
+  name: "Request Latency"
+  description: "Percentage of requests completed within latency targets"
+
+  slo_tiers:
+    simple_requests:
+      objective: "95%"  # 95% of requests under 1s
+      sli_specification:
+        measurement_window: "30d"
+        threshold: "1.0s"
+        percentile: "p95"
+
+        # Simple requests: Single module queries, cached responses
+        request_types:
+          - "GET /api/v1/conversations"
+          - "GET /api/v1/workflows"
+          - "GET /api/v1/incidents"
+          - "POST /api/v1/intents/classify"
+          - "GET /api/v1/health"
+
+        sli_formula: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{
+              endpoint=~"simple_endpoints_regex"
+            }[5m])) by (le)
+          ) < 1.0
+
+      error_budget:
+        allowed_slow_requests_percentage: 5.0
+
+    complex_requests:
+      objective: "90%"  # 90% of requests under 2s
+      sli_specification:
+        measurement_window: "30d"
+        threshold: "2.0s"
+        percentile: "p95"
+
+        # Complex requests: Multi-module orchestration, LLM calls
+        request_types:
+          - "POST /api/v1/conversations"
+          - "POST /api/v1/workflows/execute"
+          - "POST /api/v1/tests/generate"
+          - "POST /api/v1/observability/query"
+          - "POST /api/v1/incidents/analyze"
+
+        sli_formula: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{
+              endpoint=~"complex_endpoints_regex"
+            }[5m])) by (le)
+          ) < 2.0
+
+      error_budget:
+        allowed_slow_requests_percentage: 10.0
+
+  p99_latency_targets:
+    simple_requests: "2.0s"
+    complex_requests: "5.0s"
+
+  burn_rate_alerts:
+    - name: "LatencySLOBurnRateCritical"
+      severity: "critical"
+      condition: "p95 > threshold for 15 minutes"
+      window: "15m"
+
+    - name: "LatencySLOBurnRateWarning"
+      severity: "warning"
+      condition: "p95 > threshold for 1 hour"
+      window: "1h"
+
+  dashboards:
+    - "Latency SLI Dashboard"
+    - "Endpoint Latency Breakdown"
+    - "Latency Percentile Distribution"
+
+# ============================================================================
+# ERROR RATE SLI/SLO
+# ============================================================================
+
+error_rate_slo:
+  name: "Error Rate"
+  description: "Percentage of requests that result in errors"
+  objective: "< 0.1%"  # Less than 0.1% error rate
+
+  sli_specification:
+    measurement_window: "30d"
+
+    error_definitions:
+      client_errors:
+        status_codes: ["400", "401", "403", "404", "422"]
+        severity: "medium"
+        impact_on_slo: "partial"  # Some 4xx are expected (bad requests)
+
+      server_errors:
+        status_codes: ["500", "502", "503", "504"]
+        severity: "high"
+        impact_on_slo: "full"
+
+      timeouts:
+        description: "Requests exceeding 30s timeout"
+        severity: "high"
+        impact_on_slo: "full"
+
+    sli_formula: |
+      sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+      /
+      sum(rate(http_requests_total[5m]))
+
+  error_budget:
+    total_requests_per_month: 50000000  # Estimated 50M requests/month
+    allowed_errors: 50000  # 0.1% of 50M
+
+  burn_rate_alerts:
+    - name: "ErrorRateSLOBurnRateCritical"
+      severity: "critical"
+      burn_rate: 100
+      window: "5m"
+      threshold: 0.01  # 1% error rate for 5 minutes
+
+    - name: "ErrorRateSLOBurnRateHigh"
+      severity: "high"
+      burn_rate: 10
+      window: "1h"
+      threshold: 0.001  # 0.1% sustained for 1 hour
+
+    - name: "ErrorRateSLOBurnRateWarning"
+      severity: "warning"
+      burn_rate: 1
+      window: "6h"
+      threshold: 0.0005
+
+  error_classification:
+    # Errors that count against SLO
+    slo_impacting:
+      - "Internal server errors (5xx)"
+      - "Database connection failures"
+      - "Module communication timeouts"
+      - "LLM API failures (excluding rate limits)"
+      - "Authentication service unavailable"
+
+    # Errors that don't count against SLO
+    slo_excluded:
+      - "Invalid request format (400)"
+      - "Authentication failures due to bad credentials (401)"
+      - "Rate limit exceeded (429)"
+      - "Requests during maintenance windows"
+
+  dashboards:
+    - "Error Rate SLI Dashboard"
+    - "Error Distribution by Type"
+    - "Error Impact Analysis"
+
+# ============================================================================
+# COMPOSITE SLI/SLO
+# ============================================================================
+
+composite_slo:
+  name: "Overall Service Quality"
+  description: "Combined SLI measuring overall service health"
+
+  calculation:
+    formula: |
+      composite_sli = (availability_sli * 0.5) +
+                      (latency_sli * 0.3) +
+                      (error_rate_sli * 0.2)
+
+    weights:
+      availability: 0.5   # Most critical
+      latency: 0.3        # Important for UX
+      error_rate: 0.2     # Captured partly by availability
+
+  objective: "99.5%"
+
+  dashboards:
+    - "Composite SLI Dashboard"
+    - "Service Quality Score"
+
+# ============================================================================
+# MODULE-SPECIFIC SLI/SLO
+# ============================================================================
+
+module_integration_slo:
+
+  test_bench_integration:
+    name: "Test-Bench Module Availability"
+    objective: "99.5%"
+    sli_formula: |
+      sum(rate(module_requests_total{module="test_bench",status="success"}[5m]))
+      /
+      sum(rate(module_requests_total{module="test_bench"}[5m]))
+
+  observatory_integration:
+    name: "Observatory Module Availability"
+    objective: "99.5%"
+    sli_formula: |
+      sum(rate(module_requests_total{module="observatory",status="success"}[5m]))
+      /
+      sum(rate(module_requests_total{module="observatory"}[5m]))
+
+  incident_manager_integration:
+    name: "Incident Manager Module Availability"
+    objective: "99.9%"  # Higher because it's critical for production
+    sli_formula: |
+      sum(rate(module_requests_total{module="incident_manager",status="success"}[5m]))
+      /
+      sum(rate(module_requests_total{module="incident_manager"}[5m]))
+
+  orchestrator_integration:
+    name: "Orchestrator Module Availability"
+    objective: "99.5%"
+    sli_formula: |
+      sum(rate(module_requests_total{module="orchestrator",status="success"}[5m]))
+      /
+      sum(rate(module_requests_total{module="orchestrator"}[5m]))
+
+# ============================================================================
+# BUSINESS METRICS SLI/SLO
+# ============================================================================
+
+business_metrics_slo:
+
+  intent_classification_accuracy:
+    name: "Intent Classification Accuracy"
+    objective: "95%"
+    description: "Percentage of correctly classified user intents"
+    sli_formula: |
+      intent_classification_accuracy
+    measurement_window: "7d"
+
+  workflow_success_rate:
+    name: "Workflow Execution Success Rate"
+    objective: "90%"
+    description: "Percentage of workflows completing successfully"
+    sli_formula: |
+      sum(rate(workflow_executions_total{status="success"}[1h]))
+      /
+      sum(rate(workflow_executions_total[1h]))
+    measurement_window: "30d"
+
+  incident_detection_accuracy:
+    name: "Incident Detection Accuracy"
+    objective: "70%"
+    description: "True positive rate with <10% false positive rate"
+    measurement_window: "30d"
+    constraints:
+      - "False positive rate < 10%"
+      - "Mean time to detection < 5 minutes"
+
+# ============================================================================
+# DEPENDENCY SLI/SLO
+# ============================================================================
+
+dependency_slo:
+
+  database_availability:
+    name: "PostgreSQL Availability"
+    objective: "99.95%"
+    sli_formula: |
+      avg(up{job="postgresql"})
+    measurement_window: "30d"
+
+  redis_availability:
+    name: "Redis Availability"
+    objective: "99.9%"
+    sli_formula: |
+      avg(up{job="redis"})
+    measurement_window: "30d"
+
+  llm_api_availability:
+    name: "LLM API Availability"
+    objective: "99.5%"
+    description: "Availability of external LLM providers"
+    sli_formula: |
+      sum(rate(llm_requests_total{status=~"success|rate_limited"}[5m]))
+      /
+      sum(rate(llm_requests_total[5m]))
+    measurement_window: "30d"
+    note: "Rate limits count as success since they're expected"
+
+# ============================================================================
+# ERROR BUDGET POLICY
+# ============================================================================
+
+error_budget_policy:
+
+  budget_exhaustion_actions:
+
+    # 0-25% budget consumed
+    healthy:
+      status: "green"
+      actions:
+        - "Normal development velocity"
+        - "Can take calculated risks on new features"
+        - "Focus on feature development"
+
+    # 25-50% budget consumed
+    warning:
+      status: "yellow"
+      actions:
+        - "Review recent changes for reliability issues"
+        - "Increase monitoring and alerting"
+        - "Consider stabilization sprints"
+        - "Reduce deployment frequency slightly"
+
+    # 50-75% budget consumed
+    critical:
+      status: "orange"
+      actions:
+        - "Freeze non-critical feature development"
+        - "Focus on reliability improvements"
+        - "Root cause analysis for recent incidents"
+        - "Increase code review rigor"
+        - "Implement additional testing"
+
+    # 75-100% budget consumed
+    emergency:
+      status: "red"
+      actions:
+        - "Feature freeze until budget recovers"
+        - "All hands on reliability"
+        - "Mandatory incident reviews"
+        - "Deployment freeze except critical fixes"
+        - "Executive escalation"
+
+    # >100% budget consumed (SLO breach)
+    breach:
+      status: "critical"
+      actions:
+        - "Complete feature and deployment freeze"
+        - "Immediate incident response"
+        - "War room activation"
+        - "Customer communication"
+        - "Post-mortem required"
+
+  budget_reset_policy:
+    reset_period: "monthly"  # Reset on 1st of each month
+    carry_over: false  # Don't carry over unused budget
+    grace_period: "24h"  # 24h grace before enforcing freezes
+
+# ============================================================================
+# SLO MONITORING AND REPORTING
+# ============================================================================
+
+slo_monitoring:
+
+  reporting_frequency:
+    real_time_dashboard: "continuous"
+    daily_report: "09:00 UTC"
+    weekly_report: "Monday 09:00 UTC"
+    monthly_report: "1st of month 09:00 UTC"
+    quarterly_review: "First week of quarter"
+
+  stakeholders:
+    engineering:
+      - "Real-time dashboards"
+      - "Alert notifications"
+      - "Weekly SLO reports"
+
+    product:
+      - "Weekly SLO summary"
+      - "Monthly SLO trends"
+      - "Error budget status"
+
+    executive:
+      - "Monthly SLO report"
+      - "SLO breach notifications"
+      - "Quarterly SLO review"
+
+    customers:
+      - "Public status page"
+      - "Monthly uptime report"
+      - "Incident notifications"
+
+  alert_routing:
+    critical_breach:
+      - "PagerDuty immediate escalation"
+      - "Slack #incidents channel"
+      - "Email to on-call engineer"
+
+    warning_level:
+      - "Slack #reliability channel"
+      - "Email to engineering team"
+
+    info_level:
+      - "Dashboard notification"
+      - "Weekly digest email"
+
+# ============================================================================
+# SLO REVIEW AND ITERATION
+# ============================================================================
+
+slo_governance:
+
+  review_cadence:
+    monthly: "Review current month's SLO performance"
+    quarterly: "Adjust SLO targets based on business needs and feasibility"
+    annual: "Comprehensive SLO framework review"
+
+  adjustment_criteria:
+    increase_target:
+      - "Consistently exceeding SLO by >2% for 3 months"
+      - "Business requirements demand higher reliability"
+      - "Customer feedback indicates need for improvement"
+
+    decrease_target:
+      - "Repeatedly missing SLO despite best efforts"
+      - "Cost of achieving current SLO is prohibitive"
+      - "Target is unrealistic given dependencies"
+
+  documentation_requirements:
+    - "All SLO changes must be documented with rationale"
+    - "Customer impact assessment for SLO reductions"
+    - "Engineering feasibility study for SLO increases"
+    - "Cost-benefit analysis for major SLO changes"
+
+# ============================================================================
+# PROMETHEUS RECORDING RULES (Implementation)
+# ============================================================================
+
+prometheus_recording_rules:
+  # See prometheus-recording-rules.yaml for complete implementation
+  key_rules:
+    - "sli:availability:ratio5m"
+    - "sli:latency:p95_5m"
+    - "sli:latency:p99_5m"
+    - "sli:error_rate:ratio5m"
+    - "slo:error_budget:remaining"
+    - "slo:error_budget:burn_rate"

@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: copilot_postgres_test
+    environment:
+      POSTGRES_DB: copilot_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d copilot_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: copilot_redis_test
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant-test:
+    image: qdrant/qdrant:latest
+    container_name: copilot_qdrant_test
+    ports:
+      - "6334:6333"
+      - "6335:6334"
+    volumes:
+      - qdrant_test_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats-test:
+    image: nats:latest
+    container_name: copilot_nats_test
+    ports:
+      - "4223:4222"
+      - "8223:8222"  # HTTP monitoring
+    command: ["--js", "--store_dir=/data"]
+    volumes:
+      - nats_test_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  copilot-agent-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    container_name: copilot_agent_test
+    environment:
+      DATABASE_URL: postgresql://test_user:test_pass@postgres-test:5432/copilot_test
+      REDIS_URL: redis://redis-test:6379
+      QDRANT_URL: http://qdrant-test:6333
+      NATS_URL: nats://nats-test:4222
+      RUST_LOG: info
+      LOG_LEVEL: debug
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      qdrant-test:
+        condition: service_healthy
+      nats-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+  qdrant_test_data:
+  nats_test_data:
+
+networks:
+  default:
+    name: copilot_test_network

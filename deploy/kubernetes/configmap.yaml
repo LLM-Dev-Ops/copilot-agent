@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-copilot-config
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: llm-copilot-agent
+    app.kubernetes.io/component: configuration
+data:
+  # Application Configuration
+  RUST_LOG: "info,llm_copilot_agent=debug"
+  RUST_BACKTRACE: "1"
+
+  # Server Configuration
+  HTTP_PORT: "8080"
+  GRPC_PORT: "50051"
+  METRICS_PORT: "9090"
+  WORKERS: "4"
+  MAX_CONNECTIONS: "1000"
+
+  # Database Configuration
+  DATABASE_URL: "postgresql://copilot:password@postgres-service.llm-copilot.svc.cluster.local:5432/copilot_db"
+  DATABASE_MAX_CONNECTIONS: "20"
+  DATABASE_MIN_CONNECTIONS: "5"
+  DATABASE_TIMEOUT: "30"
+
+  # Redis Configuration
+  REDIS_URL: "redis://redis-service.llm-copilot.svc.cluster.local:6379"
+  REDIS_POOL_SIZE: "10"
+  REDIS_TIMEOUT: "5"
+
+  # NATS Configuration
+  NATS_URL: "nats://nats-service.llm-copilot.svc.cluster.local:4222"
+  NATS_CLUSTER_NAME: "copilot-cluster"
+
+  # Feature Flags
+  ENABLE_METRICS: "true"
+  ENABLE_TRACING: "true"
+  ENABLE_RATE_LIMITING: "true"
+  ENABLE_CACHING: "true"
+  ENABLE_DISTRIBUTED_TRACING: "true"
+
+  # LLM Provider Configuration
+  LLM_PROVIDER: "openai"
+  LLM_MODEL: "gpt-4"
+  LLM_MAX_TOKENS: "4096"
+  LLM_TEMPERATURE: "0.7"
+  LLM_TIMEOUT: "30"
+
+  # Agent Configuration
+  AGENT_MAX_ITERATIONS: "10"
+  AGENT_TIMEOUT: "300"
+  AGENT_MAX_CONCURRENT_TASKS: "5"
+
+  # Rate Limiting
+  RATE_LIMIT_REQUESTS: "100"
+  RATE_LIMIT_WINDOW: "60"
+
+  # Observability
+  JAEGER_ENDPOINT: "http://jaeger-collector.observability.svc.cluster.local:14268/api/traces"
+  PROMETHEUS_ENDPOINT: "http://prometheus-service.observability.svc.cluster.local:9090"
+
+  # CORS Configuration
+  CORS_ALLOWED_ORIGINS: "*"
+  CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+  CORS_ALLOWED_HEADERS: "Content-Type,Authorization"
+
+  # Health Check Configuration
+  HEALTH_CHECK_PATH: "/health"
+  READINESS_CHECK_PATH: "/ready"
+
+  # Graceful Shutdown
+  GRACEFUL_SHUTDOWN_TIMEOUT: "30"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-copilot-app-config
+  namespace: llm-copilot
+  labels:
+    app.kubernetes.io/name: llm-copilot-agent
+    app.kubernetes.io/component: application-config
+data:
+  config.toml: |
+    [server]
+    host = "0.0.0.0"
+    http_port = 8080
+    grpc_port = 50051
+    metrics_port = 9090
+    workers = 4
+
+    [database]
+    max_connections = 20
+    min_connections = 5
+    connection_timeout = 30
+
+    [redis]
+    pool_size = 10
+    timeout = 5
+
+    [llm]
+    provider = "openai"
+    model = "gpt-4"
+    max_tokens = 4096
+    temperature = 0.7
+    timeout = 30
+
+    [agent]
+    max_iterations = 10
+    timeout = 300
+    max_concurrent_tasks = 5
+
+    [rate_limiting]
+    enabled = true
+    requests = 100
+    window = 60
+
+    [observability]
+    metrics_enabled = true
+    tracing_enabled = true
+    log_level = "info"

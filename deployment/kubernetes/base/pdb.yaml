@@ -1,0 +1,16 @@
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: llm-copilot-agent-pdb
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+spec:
+  minAvailable: 2  # Always keep at least 2 pods running
+  # OR use maxUnavailable: 1  # Allow max 1 pod to be unavailable
+  selector:
+    matchLabels:
+      app: llm-copilot-agent
+      component: api
+  unhealthyPodEvictionPolicy: IfHealthyBudget

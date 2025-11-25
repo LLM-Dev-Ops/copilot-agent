@@ -1,0 +1,229 @@
+# LLM CoPilot Agent - Default Configuration
+# This file contains default configuration values
+# Override these values using environment variables or a custom config file
+
+[server]
+http_port = 8080
+grpc_port = 50051
+host = "0.0.0.0"
+max_connections = 10000
+request_timeout = 30
+shutdown_timeout = 30
+
+[server.tls]
+enabled = false
+cert_path = ""
+key_path = ""
+
+[database]
+url = "postgresql://copilot:password@localhost:5432/copilot_db"
+max_connections = 10
+min_connections = 2
+connect_timeout = 30
+idle_timeout = 600
+acquire_timeout = 30
+
+[redis]
+url = "redis://localhost:6379/0"
+max_connections = 10
+min_connections = 2
+connect_timeout = 5
+pool_timeout = 10
+default_ttl = 3600
+
+[nats]
+url = "nats://localhost:4222"
+max_reconnects = 10
+reconnect_delay = 2
+ping_interval = 120
+
+[auth]
+jwt_secret = "your-secret-key-change-in-production"
+jwt_expiration = 86400
+api_key_header = "X-API-Key"
+
+[auth.cors]
+allowed_origins = ["http://localhost:3000", "http://localhost:8080"]
+allowed_methods = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+allowed_headers = ["Content-Type", "Authorization", "X-API-Key"]
+max_age = 3600
+
+[llm]
+default_provider = "openai"
+fallback_providers = ["anthropic", "google"]
+max_retries = 3
+retry_delay = 1000
+timeout = 60
+max_concurrent_requests = 10
+
+[llm.openai]
+api_key = ""
+model = "gpt-4-turbo-preview"
+max_tokens = 4096
+temperature = 0.7
+top_p = 1.0
+frequency_penalty = 0.0
+presence_penalty = 0.0
+
+[llm.anthropic]
+api_key = ""
+model = "claude-3-opus-20240229"
+max_tokens = 4096
+temperature = 0.7
+
+[llm.google]
+api_key = ""
+model = "gemini-pro"
+max_tokens = 4096
+temperature = 0.7
+
+[embedding]
+provider = "openai"
+model = "text-embedding-3-small"
+dimensions = 1536
+batch_size = 100
+cache_enabled = true
+cache_ttl = 86400
+
+[vector_db]
+provider = "qdrant"
+
+[vector_db.qdrant]
+url = "http://localhost:6333"
+api_key = ""
+collection = "copilot_vectors"
+vector_size = 1536
+distance = "Cosine"
+
+[vector_db.pinecone]
+api_key = ""
+environment = ""
+index = "copilot-index"
+dimension = 1536
+metric = "cosine"
+
+[vector_db.weaviate]
+url = "http://localhost:8080"
+api_key = ""
+class_name = "CopilotDocument"
+
+[rag]
+chunk_size = 512
+chunk_overlap = 50
+top_k = 5
+similarity_threshold = 0.7
+max_context_length = 4000
+rerank_enabled = true
+rerank_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+rerank_top_k = 10
+
+[rag.retrieval]
+strategy = "hybrid"
+semantic_weight = 0.7
+keyword_weight = 0.3
+enable_filters = true
+
+[memory]
+type = "redis"
+max_tokens = 4000
+summary_enabled = true
+summary_threshold = 3000
+summary_model = "gpt-3.5-turbo"
+window_size = 10
+
+[memory.conversation]
+max_turns = 50
+max_age = 3600
+compression_enabled = true
+
+[workflows]
+max_steps = 50
+timeout = 300
+retry_enabled = true
+retry_max_attempts = 3
+retry_backoff = "exponential"
+retry_initial_delay = 1000
+
+[workflows.executor]
+max_concurrent = 5
+queue_size = 100
+priority_enabled = true
+
+[plugins]
+directory = "./plugins"
+timeout = 30
+max_concurrent = 10
+auto_reload = true
+reload_interval = 60
+
+[plugins.security]
+sandbox_enabled = true
+allowed_syscalls = []
+max_memory = 536870912
+max_cpu_time = 30
+
+[observability]
+enabled = true
+log_level = "info"
+json_logs = false
+
+[observability.tracing]
+enabled = false
+exporter = "otlp"
+endpoint = "http://localhost:4317"
+sample_rate = 1.0
+
+[observability.metrics]
+enabled = true
+port = 9090
+path = "/metrics"
+
+[observability.health]
+path = "/health"
+readiness_path = "/ready"
+liveness_path = "/live"
+
+[rate_limiting]
+enabled = true
+requests_per_minute = 60
+burst = 10
+strategy = "token_bucket"
+
+[rate_limiting.tiers]
+free = 10
+basic = 60
+premium = 300
+enterprise = 1000
+
+[storage]
+type = "local"
+local_path = "./storage"
+max_file_size = 10485760
+allowed_extensions = [".txt", ".pdf", ".docx", ".md", ".json"]
+
+[storage.s3]
+bucket = ""
+region = "us-east-1"
+endpoint = ""
+access_key = ""
+secret_key = ""
+
+[features]
+streaming = true
+function_calling = true
+multi_modal = false
+code_execution = false
+web_search = true
+image_generation = false
+
+[cache]
+enabled = true
+default_ttl = 3600
+max_size = 1073741824
+eviction_policy = "lru"
+
+[cache.layers]
+llm_responses = true
+embeddings = true
+rag_results = true
+user_sessions = true

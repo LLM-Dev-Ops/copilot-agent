@@ -1,0 +1,1877 @@
+openapi: 3.0.3
+info:
+  title: LLM-CoPilot-Agent API
+  version: 1.0.0
+  description: |
+    Comprehensive REST API for LLM-powered DevOps automation agent.
+
+    **Features:**
+    - Natural language to DevOps operations
+    - Real-time streaming responses
+    - Workflow orchestration
+    - Observability queries
+    - Incident management
+
+    **Authentication:** JWT Bearer tokens required for all endpoints
+    **Rate Limiting:** 1000 requests/hour per user, 100/minute burst
+  contact:
+    name: API Support
+    email: api@llm-copilot-agent.dev
+  license:
+    name: Commercial License
+    url: https://github.com/llm-copilot-agent/blob/main/LICENSE.md
+
+servers:
+  - url: https://api.llm-copilot-agent.dev/v1
+    description: Production
+  - url: https://staging-api.llm-copilot-agent.dev/v1
+    description: Staging
+  - url: http://localhost:8080/v1
+    description: Local Development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: sessions
+    description: Conversation session management
+  - name: messages
+    description: User messages and AI responses
+  - name: workflows
+    description: Multi-step DevOps workflow orchestration
+  - name: queries
+    description: Observability data queries (metrics, logs, traces)
+  - name: tests
+    description: Test generation and execution
+  - name: incidents
+    description: Incident detection and response
+  - name: health
+    description: System health and status
+
+paths:
+  # ==================== SESSIONS ====================
+  /sessions:
+    post:
+      tags: [sessions]
+      summary: Create new conversation session
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      tags: [sessions]
+      summary: List user sessions
+      operationId: listSessions
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, paused, completed, expired]
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created_at, updated_at, last_activity]
+            default: last_activity
+      responses:
+        '200':
+          description: Sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /sessions/{sessionId}:
+    get:
+      tags: [sessions]
+      summary: Get session details
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      responses:
+        '200':
+          description: Session retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [sessions]
+      summary: Delete session and all associated data
+      operationId: deleteSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      responses:
+        '204':
+          description: Session deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== MESSAGES ====================
+  /sessions/{sessionId}/messages:
+    post:
+      tags: [messages]
+      summary: Send message to session
+      operationId: sendMessage
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Message processed successfully (non-streaming)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '202':
+          description: Message accepted for async processing
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URL to poll for message status
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    get:
+      tags: [messages]
+      summary: Get message history
+      operationId: getMessageHistory
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages before this timestamp
+        - name: after
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages after this timestamp
+      responses:
+        '200':
+          description: Message history retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageHistoryResponse'
+
+  /sessions/{sessionId}/messages/stream:
+    get:
+      tags: [messages]
+      summary: Stream message responses (SSE)
+      operationId: streamMessages
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+        - name: resume_token
+          in: query
+          schema:
+            type: string
+          description: Token to resume interrupted stream
+      responses:
+        '200':
+          description: SSE stream established
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/StreamEvent'
+
+  # ==================== WORKFLOWS ====================
+  /workflows:
+    post:
+      tags: [workflows]
+      summary: Create and optionally execute workflow
+      operationId: createWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkflowRequest'
+      responses:
+        '201':
+          description: Workflow created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    get:
+      tags: [workflows]
+      summary: List workflows
+      operationId: listWorkflows
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/WorkflowStatus'
+        - name: template
+          in: query
+          schema:
+            type: string
+          description: Filter by workflow template name
+      responses:
+        '200':
+          description: Workflows retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowListResponse'
+
+  /workflows/{workflowId}:
+    get:
+      tags: [workflows]
+      summary: Get workflow status and details
+      operationId: getWorkflow
+      parameters:
+        - $ref: '#/components/parameters/WorkflowIdParam'
+      responses:
+        '200':
+          description: Workflow retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workflows/{workflowId}/execute:
+    post:
+      tags: [workflows]
+      summary: Execute workflow
+      operationId: executeWorkflow
+      parameters:
+        - $ref: '#/components/parameters/WorkflowIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteWorkflowRequest'
+      responses:
+        '202':
+          description: Workflow execution started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowExecutionResponse'
+
+  /workflows/{workflowId}/cancel:
+    post:
+      tags: [workflows]
+      summary: Cancel running workflow
+      operationId: cancelWorkflow
+      parameters:
+        - $ref: '#/components/parameters/WorkflowIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Workflow cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+
+  /workflows/{workflowId}/approve:
+    post:
+      tags: [workflows]
+      summary: Approve workflow waiting for approval
+      operationId: approveWorkflow
+      parameters:
+        - $ref: '#/components/parameters/WorkflowIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task_id, approved]
+              properties:
+                task_id:
+                  type: string
+                  format: uuid
+                approved:
+                  type: boolean
+                comment:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Approval processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+
+  # ==================== QUERIES ====================
+  /queries/metrics:
+    post:
+      tags: [queries]
+      summary: Query metrics from Prometheus
+      operationId: queryMetrics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricsQueryRequest'
+      responses:
+        '200':
+          description: Metrics query results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsQueryResponse'
+
+  /queries/logs:
+    post:
+      tags: [queries]
+      summary: Query logs from Loki
+      operationId: queryLogs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogsQueryRequest'
+      responses:
+        '200':
+          description: Logs query results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsQueryResponse'
+
+  /queries/traces:
+    post:
+      tags: [queries]
+      summary: Query traces from Tempo
+      operationId: queryTraces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TracesQueryRequest'
+      responses:
+        '200':
+          description: Traces query results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TracesQueryResponse'
+
+  # ==================== TESTS ====================
+  /tests/generate:
+    post:
+      tags: [tests]
+      summary: Generate tests for code
+      operationId: generateTests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateTestsRequest'
+      responses:
+        '200':
+          description: Tests generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateTestsResponse'
+
+  /tests/execute:
+    post:
+      tags: [tests]
+      summary: Execute test suite
+      operationId: executeTests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteTestsRequest'
+      responses:
+        '200':
+          description: Tests executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteTestsResponse'
+
+  /tests/coverage:
+    post:
+      tags: [tests]
+      summary: Analyze code coverage
+      operationId: analyzeCoverage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoverageRequest'
+      responses:
+        '200':
+          description: Coverage analyzed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverageResponse'
+
+  # ==================== INCIDENTS ====================
+  /incidents:
+    post:
+      tags: [incidents]
+      summary: Create incident
+      operationId: createIncident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIncidentRequest'
+      responses:
+        '201':
+          description: Incident created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentResponse'
+
+    get:
+      tags: [incidents]
+      summary: List incidents
+      operationId: listIncidents
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: severity
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/IncidentSeverity'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/IncidentStatus'
+      responses:
+        '200':
+          description: Incidents retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentListResponse'
+
+  /incidents/{incidentId}:
+    get:
+      tags: [incidents]
+      summary: Get incident details
+      operationId: getIncident
+      parameters:
+        - $ref: '#/components/parameters/IncidentIdParam'
+      responses:
+        '200':
+          description: Incident retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentResponse'
+
+    patch:
+      tags: [incidents]
+      summary: Update incident
+      operationId: updateIncident
+      parameters:
+        - $ref: '#/components/parameters/IncidentIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIncidentRequest'
+      responses:
+        '200':
+          description: Incident updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentResponse'
+
+  /incidents/{incidentId}/runbook:
+    post:
+      tags: [incidents]
+      summary: Execute incident runbook
+      operationId: executeRunbook
+      parameters:
+        - $ref: '#/components/parameters/IncidentIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auto_execute:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Runbook execution started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunbookResponse'
+
+  # ==================== HEALTH ====================
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /health/ready:
+    get:
+      tags: [health]
+      summary: Readiness check
+      operationId: readinessCheck
+      security: []
+      responses:
+        '200':
+          description: Service ready
+        '503':
+          description: Service not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token required. Include in Authorization header:
+        `Authorization: Bearer <token>`
+
+  parameters:
+    SessionIdParam:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      description: Session UUID
+
+    WorkflowIdParam:
+      name: workflowId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Workflow UUID
+
+    IncidentIdParam:
+      name: incidentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Incident UUID
+
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number (1-indexed)
+
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Items per page
+
+  headers:
+    X-RateLimit-Limit:
+      schema:
+        type: integer
+      description: Total requests allowed per window
+
+    X-RateLimit-Remaining:
+      schema:
+        type: integer
+      description: Remaining requests in current window
+
+    X-RateLimit-Reset:
+      schema:
+        type: integer
+        format: unix-timestamp
+      description: Unix timestamp when rate limit resets
+
+  schemas:
+    # ==================== SESSION SCHEMAS ====================
+    CreateSessionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^[a-zA-Z0-9\s\-_]+$'
+          description: Human-readable session name
+          example: "Production deployment session"
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          maxProperties: 20
+          description: Custom metadata (max 20 key-value pairs)
+        preferences:
+          $ref: '#/components/schemas/SessionPreferences'
+        timeout_minutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+          default: 60
+          description: Session timeout in minutes
+
+    SessionPreferences:
+      type: object
+      properties:
+        language:
+          type: string
+          enum: [en, es, fr, de, ja, zh]
+          default: en
+        timezone:
+          type: string
+          pattern: '^[A-Za-z]+/[A-Za-z_]+$'
+          example: "America/New_York"
+        stream_responses:
+          type: boolean
+          default: true
+        include_context:
+          type: boolean
+          default: true
+          description: Include conversation context in responses
+
+    SessionResponse:
+      type: object
+      required: [id, user_id, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, completed, expired]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_activity:
+          type: string
+          format: date-time
+        message_count:
+          type: integer
+          minimum: 0
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        preferences:
+          $ref: '#/components/schemas/SessionPreferences'
+
+    SessionListResponse:
+      type: object
+      required: [sessions, pagination]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionResponse'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # ==================== MESSAGE SCHEMAS ====================
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: User message content
+          example: "Show me CPU usage for auth-service"
+        attachments:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/MessageAttachment'
+        context_override:
+          type: object
+          properties:
+            include_history:
+              type: boolean
+              default: true
+            max_history_turns:
+              type: integer
+              minimum: 0
+              maximum: 50
+              default: 10
+
+    MessageAttachment:
+      type: object
+      required: [type, content]
+      properties:
+        type:
+          type: string
+          enum: [file, url, image, code]
+        content:
+          type: string
+          maxLength: 100000
+        filename:
+          type: string
+          maxLength: 255
+        mime_type:
+          type: string
+          pattern: '^[a-z]+/[a-z0-9\-\+\.]+$'
+
+    MessageResponse:
+      type: object
+      required: [id, session_id, role, content, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        intent:
+          $ref: '#/components/schemas/Intent'
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entity'
+        created_at:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          properties:
+            model:
+              type: string
+            tokens_used:
+              type: integer
+            latency_ms:
+              type: integer
+            cache_hit:
+              type: boolean
+
+    MessageHistoryResponse:
+      type: object
+      required: [messages, pagination]
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageResponse'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # ==================== STREAMING SCHEMAS ====================
+    StreamEvent:
+      type: object
+      required: [event, data]
+      properties:
+        event:
+          type: string
+          enum: [message, error, done, heartbeat, metadata]
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/StreamChunk'
+            - $ref: '#/components/schemas/StreamError'
+            - $ref: '#/components/schemas/StreamMetadata'
+        id:
+          type: string
+          description: Event ID for resume capability
+
+    StreamChunk:
+      type: object
+      required: [chunk_id, content]
+      properties:
+        chunk_id:
+          type: integer
+          minimum: 0
+        content:
+          type: string
+        delta:
+          type: boolean
+          default: true
+          description: If true, content is incremental; if false, full content
+
+    StreamError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        recoverable:
+          type: boolean
+
+    StreamMetadata:
+      type: object
+      properties:
+        resume_token:
+          type: string
+        total_chunks:
+          type: integer
+        estimated_total:
+          type: integer
+
+    # ==================== WORKFLOW SCHEMAS ====================
+    CreateWorkflowRequest:
+      type: object
+      required: [name, tasks]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        template:
+          type: string
+          maxLength: 100
+          description: Use predefined workflow template
+        tasks:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/WorkflowTask'
+        auto_execute:
+          type: boolean
+          default: false
+        approval_required:
+          type: boolean
+          default: true
+          description: Require human approval before execution
+        rollback_on_failure:
+          type: boolean
+          default: false
+
+    WorkflowTask:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+          pattern: '^[a-zA-Z0-9\-_]+$'
+          maxLength: 100
+        type:
+          type: string
+          enum: [command, http, query, deploy, scale, conditional, loop, subworkflow, approval]
+        name:
+          type: string
+          maxLength: 200
+        depends_on:
+          type: array
+          items:
+            type: string
+          description: Task IDs this task depends on
+        config:
+          type: object
+          additionalProperties: true
+        retry_policy:
+          $ref: '#/components/schemas/RetryPolicy'
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          default: 300
+
+    RetryPolicy:
+      type: object
+      properties:
+        max_attempts:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+        backoff_strategy:
+          type: string
+          enum: [exponential, linear, constant]
+          default: exponential
+        initial_delay_ms:
+          type: integer
+          minimum: 100
+          maximum: 60000
+          default: 1000
+        max_delay_ms:
+          type: integer
+          minimum: 1000
+          maximum: 300000
+          default: 30000
+
+    WorkflowStatus:
+      type: string
+      enum: [draft, pending_approval, approved, running, paused, completed, failed, cancelled, rolled_back]
+
+    WorkflowResponse:
+      type: object
+      required: [id, name, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/WorkflowStatus'
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowTaskStatus'
+        progress:
+          type: object
+          properties:
+            total_tasks:
+              type: integer
+            completed_tasks:
+              type: integer
+            failed_tasks:
+              type: integer
+            progress_percentage:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+
+    WorkflowTaskStatus:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, skipped, cancelled]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        result:
+          type: object
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+        retry_count:
+          type: integer
+
+    WorkflowListResponse:
+      type: object
+      required: [workflows, pagination]
+      properties:
+        workflows:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowResponse'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ExecuteWorkflowRequest:
+      type: object
+      properties:
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          maxProperties: 50
+        dry_run:
+          type: boolean
+          default: false
+
+    WorkflowExecutionResponse:
+      type: object
+      required: [workflow_id, execution_id, status]
+      properties:
+        workflow_id:
+          type: string
+          format: uuid
+        execution_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/WorkflowStatus'
+        started_at:
+          type: string
+          format: date-time
+
+    # ==================== QUERY SCHEMAS ====================
+    MetricsQueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: PromQL query or natural language
+          example: "rate(http_requests_total[5m])"
+        time_range:
+          $ref: '#/components/schemas/TimeRange'
+        step:
+          type: string
+          pattern: '^\d+[smhd]$'
+          default: "15s"
+          description: Query resolution step (e.g., 15s, 1m, 5m)
+        natural_language:
+          type: boolean
+          default: false
+          description: If true, query is in natural language
+
+    LogsQueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: LogQL query or natural language
+        time_range:
+          $ref: '#/components/schemas/TimeRange'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          default: 100
+        direction:
+          type: string
+          enum: [forward, backward]
+          default: backward
+        natural_language:
+          type: boolean
+          default: false
+
+    TracesQueryRequest:
+      type: object
+      properties:
+        service_name:
+          type: string
+          maxLength: 200
+        operation_name:
+          type: string
+          maxLength: 200
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+          maxProperties: 20
+        time_range:
+          $ref: '#/components/schemas/TimeRange'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 20
+        min_duration:
+          type: string
+          pattern: '^\d+[mun]?s$'
+          description: Minimum trace duration (e.g., 100ms, 1s)
+        max_duration:
+          type: string
+          pattern: '^\d+[mun]?s$'
+
+    TimeRange:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Absolute start time
+        end:
+          type: string
+          format: date-time
+          description: Absolute end time
+        relative:
+          type: string
+          pattern: '^\d+[smhd]$'
+          description: Relative time range (e.g., 5m, 1h, 7d)
+          example: "1h"
+      oneOf:
+        - required: [start, end]
+        - required: [relative]
+
+    MetricsQueryResponse:
+      type: object
+      required: [result_type, data]
+      properties:
+        result_type:
+          type: string
+          enum: [matrix, vector, scalar]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricSeries'
+        query_metadata:
+          $ref: '#/components/schemas/QueryMetadata'
+
+    MetricSeries:
+      type: object
+      required: [metric, values]
+      properties:
+        metric:
+          type: object
+          additionalProperties:
+            type: string
+          description: Metric labels
+        values:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items:
+              oneOf:
+                - type: number
+                - type: string
+
+    LogsQueryResponse:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEntry'
+        query_metadata:
+          $ref: '#/components/schemas/QueryMetadata'
+
+    LogEntry:
+      type: object
+      required: [timestamp, message]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        message:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        level:
+          type: string
+          enum: [debug, info, warn, error, fatal]
+
+    TracesQueryResponse:
+      type: object
+      required: [traces]
+      properties:
+        traces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trace'
+        query_metadata:
+          $ref: '#/components/schemas/QueryMetadata'
+
+    Trace:
+      type: object
+      required: [trace_id, spans]
+      properties:
+        trace_id:
+          type: string
+        spans:
+          type: array
+          items:
+            $ref: '#/components/schemas/Span'
+        duration_ms:
+          type: integer
+
+    Span:
+      type: object
+      required: [span_id, operation_name, start_time, duration_ms]
+      properties:
+        span_id:
+          type: string
+        parent_span_id:
+          type: string
+        operation_name:
+          type: string
+        service_name:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        duration_ms:
+          type: integer
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    QueryMetadata:
+      type: object
+      properties:
+        execution_time_ms:
+          type: integer
+        result_count:
+          type: integer
+        bytes_processed:
+          type: integer
+        cache_hit:
+          type: boolean
+
+    # ==================== TEST SCHEMAS ====================
+    GenerateTestsRequest:
+      type: object
+      required: [source_code]
+      properties:
+        source_code:
+          type: string
+          minLength: 1
+          maxLength: 100000
+        language:
+          type: string
+          enum: [rust, python, javascript, typescript, go, java]
+        test_framework:
+          type: string
+          description: Specific test framework to use
+        coverage_target:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          default: 80
+
+    GenerateTestsResponse:
+      type: object
+      required: [tests]
+      properties:
+        tests:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeneratedTest'
+        coverage_estimate:
+          type: number
+          format: float
+
+    GeneratedTest:
+      type: object
+      required: [name, code]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        assertions_count:
+          type: integer
+
+    ExecuteTestsRequest:
+      type: object
+      required: [test_suite]
+      properties:
+        test_suite:
+          type: string
+          description: Path or identifier of test suite
+        filters:
+          type: array
+          items:
+            type: string
+          description: Test name patterns to include
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          default: 300
+
+    ExecuteTestsResponse:
+      type: object
+      required: [summary, results]
+      properties:
+        summary:
+          $ref: '#/components/schemas/TestSummary'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestResult'
+
+    TestSummary:
+      type: object
+      required: [total, passed, failed, skipped]
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        passed:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+        duration_ms:
+          type: integer
+          minimum: 0
+
+    TestResult:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [passed, failed, skipped, error]
+        duration_ms:
+          type: integer
+        error_message:
+          type: string
+        stack_trace:
+          type: string
+
+    CoverageRequest:
+      type: object
+      required: [source_path]
+      properties:
+        source_path:
+          type: string
+        test_command:
+          type: string
+
+    CoverageResponse:
+      type: object
+      required: [overall_percentage, files]
+      properties:
+        overall_percentage:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileCoverage'
+
+    FileCoverage:
+      type: object
+      required: [file_path, coverage_percentage]
+      properties:
+        file_path:
+          type: string
+        coverage_percentage:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        lines_covered:
+          type: integer
+        lines_total:
+          type: integer
+        uncovered_lines:
+          type: array
+          items:
+            type: integer
+
+    # ==================== INCIDENT SCHEMAS ====================
+    CreateIncidentRequest:
+      type: object
+      required: [title, severity]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        severity:
+          $ref: '#/components/schemas/IncidentSeverity'
+        affected_services:
+          type: array
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 100
+        detected_by:
+          type: string
+          enum: [automated, manual, external]
+          default: manual
+        alert_ids:
+          type: array
+          items:
+            type: string
+          description: Related alert IDs
+
+    IncidentSeverity:
+      type: string
+      enum: [critical, high, medium, low]
+
+    IncidentStatus:
+      type: string
+      enum: [open, investigating, identified, monitoring, resolved, closed]
+
+    UpdateIncidentRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/IncidentStatus'
+        severity:
+          $ref: '#/components/schemas/IncidentSeverity'
+        notes:
+          type: string
+          maxLength: 5000
+        resolution:
+          type: string
+          maxLength: 5000
+
+    IncidentResponse:
+      type: object
+      required: [id, title, severity, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          $ref: '#/components/schemas/IncidentSeverity'
+        status:
+          $ref: '#/components/schemas/IncidentStatus'
+        affected_services:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncidentTimelineEntry'
+        root_cause:
+          type: string
+        resolution:
+          type: string
+
+    IncidentTimelineEntry:
+      type: object
+      required: [timestamp, event_type]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        event_type:
+          type: string
+          enum: [created, updated, status_changed, note_added, resolved]
+        description:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+
+    IncidentListResponse:
+      type: object
+      required: [incidents, pagination]
+      properties:
+        incidents:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncidentResponse'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    RunbookResponse:
+      type: object
+      required: [runbook_id, steps]
+      properties:
+        runbook_id:
+          type: string
+          format: uuid
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunbookStep'
+        workflow_id:
+          type: string
+          format: uuid
+          description: Associated workflow if auto-execution enabled
+
+    RunbookStep:
+      type: object
+      required: [step_number, title, action]
+      properties:
+        step_number:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        description:
+          type: string
+        action:
+          type: string
+          enum: [manual, automated]
+        command:
+          type: string
+          description: Command to execute (if automated)
+        expected_result:
+          type: string
+
+    # ==================== NLP SCHEMAS ====================
+    Intent:
+      type: object
+      required: [type, confidence]
+      properties:
+        type:
+          type: string
+          enum:
+            - query_metrics
+            - query_logs
+            - query_traces
+            - execute_workflow
+            - create_incident
+            - update_incident
+            - deploy_service
+            - scale_service
+            - rollback_deployment
+            - run_tests
+            - analyze_performance
+            - explain_error
+            - general_question
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        parameters:
+          type: object
+          additionalProperties: true
+
+    Entity:
+      type: object
+      required: [type, value]
+      properties:
+        type:
+          type: string
+          enum: [service, metric, log_level, time_range, environment, version, user, error_code]
+        value:
+          type: string
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        resolved_value:
+          type: string
+          description: Canonicalized/resolved entity value
+
+    # ==================== COMMON SCHEMAS ====================
+    PaginationInfo:
+      type: object
+      required: [page, page_size, total_items, total_pages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+        total_items:
+          type: integer
+          minimum: 0
+        total_pages:
+          type: integer
+          minimum: 0
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    HealthResponse:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/DependencyStatus'
+
+    DependencyStatus:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [up, down, degraded]
+        latency_ms:
+          type: integer
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+        request_id:
+          type: string
+          format: uuid
+          description: Unique request ID for tracing
+
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid session ID format"
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+        field_errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        documentation_url:
+          type: string
+          format: uri
+          description: Link to error documentation
+
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: JSON path to the invalid field
+          example: "tasks[0].timeout_seconds"
+        message:
+          type: string
+          description: Validation error message
+        constraint:
+          type: string
+          description: The violated constraint
+          example: "maximum: 3600"
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Request validation failed"
+              field_errors:
+                - field: "content"
+                  message: "Content cannot be empty"
+                  constraint: "minLength: 1"
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "UNAUTHORIZED"
+              message: "Invalid or expired authentication token"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "NOT_FOUND"
+              message: "Session not found"
+
+    TooManyRequests:
+      description: Too many requests - rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/X-RateLimit-Limit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/X-RateLimit-Remaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/X-RateLimit-Reset'
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until rate limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "Rate limit exceeded. Please retry after 60 seconds"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An unexpected error occurred"
+              request_id: "550e8400-e29b-41d4-a716-446655440000"

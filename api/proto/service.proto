@@ -1,0 +1,803 @@
+// gRPC Service Definitions for LLM-CoPilot-Agent
+// Protocol Buffers v3
+
+syntax = "proto3";
+
+package llm_copilot.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+// ==================== SESSION SERVICE ====================
+
+service SessionService {
+  // Create a new conversation session
+  rpc CreateSession(CreateSessionRequest) returns (Session);
+
+  // Get session by ID
+  rpc GetSession(GetSessionRequest) returns (Session);
+
+  // List user's sessions
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+
+  // Delete session
+  rpc DeleteSession(DeleteSessionRequest) returns (google.protobuf.Empty);
+
+  // Update session preferences
+  rpc UpdateSessionPreferences(UpdateSessionPreferencesRequest) returns (Session);
+}
+
+message CreateSessionRequest {
+  string name = 1;
+  map<string, string> metadata = 2;
+  SessionPreferences preferences = 3;
+  uint32 timeout_minutes = 4;
+}
+
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+message ListSessionsRequest {
+  uint32 page = 1;
+  uint32 page_size = 2;
+  SessionStatus status = 3;
+  SortOrder sort = 4;
+}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+  PaginationInfo pagination = 2;
+}
+
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+message UpdateSessionPreferencesRequest {
+  string session_id = 1;
+  SessionPreferences preferences = 2;
+}
+
+message Session {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  SessionStatus status = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  google.protobuf.Timestamp last_activity = 7;
+  uint32 message_count = 8;
+  map<string, string> metadata = 9;
+  SessionPreferences preferences = 10;
+}
+
+message SessionPreferences {
+  string language = 1;
+  string timezone = 2;
+  bool stream_responses = 3;
+  bool include_context = 4;
+}
+
+enum SessionStatus {
+  SESSION_STATUS_UNSPECIFIED = 0;
+  SESSION_STATUS_ACTIVE = 1;
+  SESSION_STATUS_PAUSED = 2;
+  SESSION_STATUS_COMPLETED = 3;
+  SESSION_STATUS_EXPIRED = 4;
+}
+
+enum SortOrder {
+  SORT_ORDER_UNSPECIFIED = 0;
+  SORT_ORDER_CREATED_AT = 1;
+  SORT_ORDER_UPDATED_AT = 2;
+  SORT_ORDER_LAST_ACTIVITY = 3;
+}
+
+// ==================== MESSAGE SERVICE ====================
+
+service MessageService {
+  // Send a message to a session
+  rpc SendMessage(SendMessageRequest) returns (Message);
+
+  // Stream message responses (server streaming)
+  rpc StreamMessages(StreamMessagesRequest) returns (stream MessageChunk);
+
+  // Get message history
+  rpc GetMessageHistory(GetMessageHistoryRequest) returns (GetMessageHistoryResponse);
+
+  // Get single message by ID
+  rpc GetMessage(GetMessageRequest) returns (Message);
+}
+
+message SendMessageRequest {
+  string session_id = 1;
+  string content = 2;
+  repeated MessageAttachment attachments = 3;
+  ContextOverride context_override = 4;
+}
+
+message StreamMessagesRequest {
+  string session_id = 1;
+  string resume_token = 2;
+}
+
+message GetMessageHistoryRequest {
+  string session_id = 1;
+  uint32 page = 2;
+  uint32 page_size = 3;
+  google.protobuf.Timestamp before = 4;
+  google.protobuf.Timestamp after = 5;
+}
+
+message GetMessageHistoryResponse {
+  repeated Message messages = 1;
+  PaginationInfo pagination = 2;
+}
+
+message GetMessageRequest {
+  string message_id = 1;
+}
+
+message Message {
+  string id = 1;
+  string session_id = 2;
+  MessageRole role = 3;
+  string content = 4;
+  Intent intent = 5;
+  repeated Entity entities = 6;
+  google.protobuf.Timestamp created_at = 7;
+  MessageMetadata metadata = 8;
+}
+
+message MessageChunk {
+  uint32 chunk_id = 1;
+  string content = 2;
+  bool is_delta = 3;
+  ChunkType type = 4;
+  google.protobuf.Struct data = 5;
+}
+
+enum ChunkType {
+  CHUNK_TYPE_UNSPECIFIED = 0;
+  CHUNK_TYPE_TEXT = 1;
+  CHUNK_TYPE_METADATA = 2;
+  CHUNK_TYPE_ERROR = 3;
+  CHUNK_TYPE_DONE = 4;
+}
+
+message MessageAttachment {
+  AttachmentType type = 1;
+  string content = 2;
+  string filename = 3;
+  string mime_type = 4;
+}
+
+enum AttachmentType {
+  ATTACHMENT_TYPE_UNSPECIFIED = 0;
+  ATTACHMENT_TYPE_FILE = 1;
+  ATTACHMENT_TYPE_URL = 2;
+  ATTACHMENT_TYPE_IMAGE = 3;
+  ATTACHMENT_TYPE_CODE = 4;
+}
+
+message ContextOverride {
+  bool include_history = 1;
+  uint32 max_history_turns = 2;
+}
+
+enum MessageRole {
+  MESSAGE_ROLE_UNSPECIFIED = 0;
+  MESSAGE_ROLE_USER = 1;
+  MESSAGE_ROLE_ASSISTANT = 2;
+  MESSAGE_ROLE_SYSTEM = 3;
+}
+
+message MessageMetadata {
+  string model = 1;
+  uint32 tokens_used = 2;
+  uint32 latency_ms = 3;
+  bool cache_hit = 4;
+}
+
+// ==================== WORKFLOW SERVICE ====================
+
+service WorkflowService {
+  // Create workflow
+  rpc CreateWorkflow(CreateWorkflowRequest) returns (Workflow);
+
+  // Get workflow by ID
+  rpc GetWorkflow(GetWorkflowRequest) returns (Workflow);
+
+  // List workflows
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse);
+
+  // Execute workflow
+  rpc ExecuteWorkflow(ExecuteWorkflowRequest) returns (WorkflowExecution);
+
+  // Cancel workflow
+  rpc CancelWorkflow(CancelWorkflowRequest) returns (Workflow);
+
+  // Approve workflow task
+  rpc ApproveWorkflow(ApproveWorkflowRequest) returns (Workflow);
+
+  // Stream workflow progress (server streaming)
+  rpc StreamWorkflowProgress(StreamWorkflowProgressRequest) returns (stream WorkflowEvent);
+
+  // Get workflow execution status
+  rpc GetWorkflowExecution(GetWorkflowExecutionRequest) returns (WorkflowExecution);
+}
+
+message CreateWorkflowRequest {
+  string name = 1;
+  string description = 2;
+  string template = 3;
+  repeated WorkflowTask tasks = 4;
+  bool auto_execute = 5;
+  bool approval_required = 6;
+  bool rollback_on_failure = 7;
+}
+
+message GetWorkflowRequest {
+  string workflow_id = 1;
+}
+
+message ListWorkflowsRequest {
+  uint32 page = 1;
+  uint32 page_size = 2;
+  repeated WorkflowStatus status = 3;
+  string template = 4;
+}
+
+message ListWorkflowsResponse {
+  repeated Workflow workflows = 1;
+  PaginationInfo pagination = 2;
+}
+
+message ExecuteWorkflowRequest {
+  string workflow_id = 1;
+  map<string, string> variables = 2;
+  bool dry_run = 3;
+}
+
+message CancelWorkflowRequest {
+  string workflow_id = 1;
+  string reason = 2;
+}
+
+message ApproveWorkflowRequest {
+  string workflow_id = 1;
+  string task_id = 2;
+  bool approved = 3;
+  string comment = 4;
+}
+
+message StreamWorkflowProgressRequest {
+  string workflow_id = 1;
+}
+
+message GetWorkflowExecutionRequest {
+  string execution_id = 1;
+}
+
+message Workflow {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  WorkflowStatus status = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp completed_at = 7;
+  repeated WorkflowTaskStatus tasks = 8;
+  WorkflowProgress progress = 9;
+}
+
+message WorkflowTask {
+  string id = 1;
+  TaskType type = 2;
+  string name = 3;
+  repeated string depends_on = 4;
+  google.protobuf.Struct config = 5;
+  RetryPolicy retry_policy = 6;
+  uint32 timeout_seconds = 7;
+}
+
+enum TaskType {
+  TASK_TYPE_UNSPECIFIED = 0;
+  TASK_TYPE_COMMAND = 1;
+  TASK_TYPE_HTTP = 2;
+  TASK_TYPE_QUERY = 3;
+  TASK_TYPE_DEPLOY = 4;
+  TASK_TYPE_SCALE = 5;
+  TASK_TYPE_CONDITIONAL = 6;
+  TASK_TYPE_LOOP = 7;
+  TASK_TYPE_SUBWORKFLOW = 8;
+  TASK_TYPE_APPROVAL = 9;
+}
+
+message RetryPolicy {
+  uint32 max_attempts = 1;
+  BackoffStrategy backoff_strategy = 2;
+  uint32 initial_delay_ms = 3;
+  uint32 max_delay_ms = 4;
+}
+
+enum BackoffStrategy {
+  BACKOFF_STRATEGY_UNSPECIFIED = 0;
+  BACKOFF_STRATEGY_EXPONENTIAL = 1;
+  BACKOFF_STRATEGY_LINEAR = 2;
+  BACKOFF_STRATEGY_CONSTANT = 3;
+}
+
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STATUS_DRAFT = 1;
+  WORKFLOW_STATUS_PENDING_APPROVAL = 2;
+  WORKFLOW_STATUS_APPROVED = 3;
+  WORKFLOW_STATUS_RUNNING = 4;
+  WORKFLOW_STATUS_PAUSED = 5;
+  WORKFLOW_STATUS_COMPLETED = 6;
+  WORKFLOW_STATUS_FAILED = 7;
+  WORKFLOW_STATUS_CANCELLED = 8;
+  WORKFLOW_STATUS_ROLLED_BACK = 9;
+}
+
+message WorkflowTaskStatus {
+  string id = 1;
+  string name = 2;
+  TaskStatus status = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp completed_at = 5;
+  google.protobuf.Struct result = 6;
+  ErrorDetail error = 7;
+  uint32 retry_count = 8;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_STATUS_PENDING = 1;
+  TASK_STATUS_RUNNING = 2;
+  TASK_STATUS_COMPLETED = 3;
+  TASK_STATUS_FAILED = 4;
+  TASK_STATUS_SKIPPED = 5;
+  TASK_STATUS_CANCELLED = 6;
+}
+
+message WorkflowProgress {
+  uint32 total_tasks = 1;
+  uint32 completed_tasks = 2;
+  uint32 failed_tasks = 3;
+  float progress_percentage = 4;
+}
+
+message WorkflowExecution {
+  string workflow_id = 1;
+  string execution_id = 2;
+  WorkflowStatus status = 3;
+  google.protobuf.Timestamp started_at = 4;
+}
+
+message WorkflowEvent {
+  string workflow_id = 1;
+  EventType event_type = 2;
+  string message = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  google.protobuf.Struct data = 5;
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_STARTED = 1;
+  EVENT_TYPE_TASK_STARTED = 2;
+  EVENT_TYPE_TASK_COMPLETED = 3;
+  EVENT_TYPE_TASK_FAILED = 4;
+  EVENT_TYPE_WAITING_APPROVAL = 5;
+  EVENT_TYPE_APPROVED = 6;
+  EVENT_TYPE_COMPLETED = 7;
+  EVENT_TYPE_FAILED = 8;
+  EVENT_TYPE_CANCELLED = 9;
+}
+
+// ==================== QUERY SERVICE ====================
+
+service QueryService {
+  // Query metrics from Prometheus
+  rpc QueryMetrics(MetricsQueryRequest) returns (MetricsQueryResponse);
+
+  // Query logs from Loki
+  rpc QueryLogs(LogsQueryRequest) returns (LogsQueryResponse);
+
+  // Query traces from Tempo
+  rpc QueryTraces(TracesQueryRequest) returns (TracesQueryResponse);
+
+  // Translate natural language to query
+  rpc TranslateQuery(TranslateQueryRequest) returns (TranslateQueryResponse);
+}
+
+message MetricsQueryRequest {
+  string query = 1;
+  TimeRange time_range = 2;
+  string step = 3;
+  bool natural_language = 4;
+}
+
+message MetricsQueryResponse {
+  ResultType result_type = 1;
+  repeated MetricSeries data = 2;
+  QueryMetadata metadata = 3;
+}
+
+enum ResultType {
+  RESULT_TYPE_UNSPECIFIED = 0;
+  RESULT_TYPE_MATRIX = 1;
+  RESULT_TYPE_VECTOR = 2;
+  RESULT_TYPE_SCALAR = 3;
+}
+
+message MetricSeries {
+  map<string, string> metric = 1;
+  repeated MetricValue values = 2;
+}
+
+message MetricValue {
+  google.protobuf.Timestamp timestamp = 1;
+  double value = 2;
+}
+
+message LogsQueryRequest {
+  string query = 1;
+  TimeRange time_range = 2;
+  uint32 limit = 3;
+  Direction direction = 4;
+  bool natural_language = 5;
+}
+
+message LogsQueryResponse {
+  repeated LogEntry entries = 1;
+  QueryMetadata metadata = 2;
+}
+
+enum Direction {
+  DIRECTION_UNSPECIFIED = 0;
+  DIRECTION_FORWARD = 1;
+  DIRECTION_BACKWARD = 2;
+}
+
+message LogEntry {
+  google.protobuf.Timestamp timestamp = 1;
+  string message = 2;
+  map<string, string> labels = 3;
+  LogLevel level = 4;
+}
+
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_DEBUG = 1;
+  LOG_LEVEL_INFO = 2;
+  LOG_LEVEL_WARN = 3;
+  LOG_LEVEL_ERROR = 4;
+  LOG_LEVEL_FATAL = 5;
+}
+
+message TracesQueryRequest {
+  string service_name = 1;
+  string operation_name = 2;
+  map<string, string> tags = 3;
+  TimeRange time_range = 4;
+  uint32 limit = 5;
+  google.protobuf.Duration min_duration = 6;
+  google.protobuf.Duration max_duration = 7;
+}
+
+message TracesQueryResponse {
+  repeated Trace traces = 1;
+  QueryMetadata metadata = 2;
+}
+
+message Trace {
+  string trace_id = 1;
+  repeated Span spans = 2;
+  google.protobuf.Duration duration = 3;
+}
+
+message Span {
+  string span_id = 1;
+  string parent_span_id = 2;
+  string operation_name = 3;
+  string service_name = 4;
+  google.protobuf.Timestamp start_time = 5;
+  google.protobuf.Duration duration = 6;
+  map<string, string> tags = 7;
+}
+
+message TranslateQueryRequest {
+  string natural_language = 1;
+  QueryType query_type = 2;
+}
+
+message TranslateQueryResponse {
+  string query = 1;
+  QueryType query_type = 2;
+  float confidence = 3;
+}
+
+enum QueryType {
+  QUERY_TYPE_UNSPECIFIED = 0;
+  QUERY_TYPE_PROMQL = 1;
+  QUERY_TYPE_LOGQL = 2;
+  QUERY_TYPE_TRACEQL = 3;
+}
+
+message TimeRange {
+  oneof range {
+    AbsoluteTimeRange absolute = 1;
+    string relative = 2;
+  }
+}
+
+message AbsoluteTimeRange {
+  google.protobuf.Timestamp start = 1;
+  google.protobuf.Timestamp end = 2;
+}
+
+message QueryMetadata {
+  uint32 execution_time_ms = 1;
+  uint32 result_count = 2;
+  uint64 bytes_processed = 3;
+  bool cache_hit = 4;
+}
+
+// ==================== INCIDENT SERVICE ====================
+
+service IncidentService {
+  // Create incident
+  rpc CreateIncident(CreateIncidentRequest) returns (Incident);
+
+  // Get incident by ID
+  rpc GetIncident(GetIncidentRequest) returns (Incident);
+
+  // List incidents
+  rpc ListIncidents(ListIncidentsRequest) returns (ListIncidentsResponse);
+
+  // Update incident
+  rpc UpdateIncident(UpdateIncidentRequest) returns (Incident);
+
+  // Execute incident runbook
+  rpc ExecuteRunbook(ExecuteRunbookRequest) returns (Runbook);
+
+  // Add timeline entry
+  rpc AddTimelineEntry(AddTimelineEntryRequest) returns (Incident);
+}
+
+message CreateIncidentRequest {
+  string title = 1;
+  string description = 2;
+  IncidentSeverity severity = 3;
+  repeated string affected_services = 4;
+  DetectedBy detected_by = 5;
+  repeated string alert_ids = 6;
+}
+
+message GetIncidentRequest {
+  string incident_id = 1;
+}
+
+message ListIncidentsRequest {
+  uint32 page = 1;
+  uint32 page_size = 2;
+  repeated IncidentSeverity severity = 3;
+  repeated IncidentStatus status = 4;
+}
+
+message ListIncidentsResponse {
+  repeated Incident incidents = 1;
+  PaginationInfo pagination = 2;
+}
+
+message UpdateIncidentRequest {
+  string incident_id = 1;
+  IncidentStatus status = 2;
+  IncidentSeverity severity = 3;
+  string notes = 4;
+  string resolution = 5;
+}
+
+message ExecuteRunbookRequest {
+  string incident_id = 1;
+  bool auto_execute = 2;
+}
+
+message AddTimelineEntryRequest {
+  string incident_id = 1;
+  TimelineEventType event_type = 2;
+  string description = 3;
+}
+
+message Incident {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  IncidentSeverity severity = 4;
+  IncidentStatus status = 5;
+  repeated string affected_services = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  google.protobuf.Timestamp resolved_at = 9;
+  repeated TimelineEntry timeline = 10;
+  string root_cause = 11;
+  string resolution = 12;
+}
+
+enum IncidentSeverity {
+  INCIDENT_SEVERITY_UNSPECIFIED = 0;
+  INCIDENT_SEVERITY_CRITICAL = 1;
+  INCIDENT_SEVERITY_HIGH = 2;
+  INCIDENT_SEVERITY_MEDIUM = 3;
+  INCIDENT_SEVERITY_LOW = 4;
+}
+
+enum IncidentStatus {
+  INCIDENT_STATUS_UNSPECIFIED = 0;
+  INCIDENT_STATUS_OPEN = 1;
+  INCIDENT_STATUS_INVESTIGATING = 2;
+  INCIDENT_STATUS_IDENTIFIED = 3;
+  INCIDENT_STATUS_MONITORING = 4;
+  INCIDENT_STATUS_RESOLVED = 5;
+  INCIDENT_STATUS_CLOSED = 6;
+}
+
+enum DetectedBy {
+  DETECTED_BY_UNSPECIFIED = 0;
+  DETECTED_BY_AUTOMATED = 1;
+  DETECTED_BY_MANUAL = 2;
+  DETECTED_BY_EXTERNAL = 3;
+}
+
+message TimelineEntry {
+  google.protobuf.Timestamp timestamp = 1;
+  TimelineEventType event_type = 2;
+  string description = 3;
+  string user_id = 4;
+}
+
+enum TimelineEventType {
+  TIMELINE_EVENT_TYPE_UNSPECIFIED = 0;
+  TIMELINE_EVENT_TYPE_CREATED = 1;
+  TIMELINE_EVENT_TYPE_UPDATED = 2;
+  TIMELINE_EVENT_TYPE_STATUS_CHANGED = 3;
+  TIMELINE_EVENT_TYPE_NOTE_ADDED = 4;
+  TIMELINE_EVENT_TYPE_RESOLVED = 5;
+}
+
+message Runbook {
+  string runbook_id = 1;
+  repeated RunbookStep steps = 2;
+  string workflow_id = 3;
+}
+
+message RunbookStep {
+  uint32 step_number = 1;
+  string title = 2;
+  string description = 3;
+  StepAction action = 4;
+  string command = 5;
+  string expected_result = 6;
+}
+
+enum StepAction {
+  STEP_ACTION_UNSPECIFIED = 0;
+  STEP_ACTION_MANUAL = 1;
+  STEP_ACTION_AUTOMATED = 2;
+}
+
+// ==================== NLP SERVICE ====================
+
+service NlpService {
+  // Classify intent from user input
+  rpc ClassifyIntent(ClassifyIntentRequest) returns (Intent);
+
+  // Extract entities from text
+  rpc ExtractEntities(ExtractEntitiesRequest) returns (ExtractEntitiesResponse);
+
+  // Process complete NLP request
+  rpc ProcessRequest(NlpRequest) returns (NlpResponse);
+}
+
+message ClassifyIntentRequest {
+  string text = 1;
+  string session_id = 2;
+}
+
+message ExtractEntitiesRequest {
+  string text = 1;
+  string session_id = 2;
+}
+
+message ExtractEntitiesResponse {
+  repeated Entity entities = 1;
+}
+
+message NlpRequest {
+  string text = 1;
+  string session_id = 2;
+}
+
+message NlpResponse {
+  Intent intent = 1;
+  repeated Entity entities = 2;
+  NlpMetadata metadata = 3;
+}
+
+message Intent {
+  IntentType type = 1;
+  float confidence = 2;
+  google.protobuf.Struct parameters = 3;
+}
+
+enum IntentType {
+  INTENT_TYPE_UNSPECIFIED = 0;
+  INTENT_TYPE_QUERY_METRICS = 1;
+  INTENT_TYPE_QUERY_LOGS = 2;
+  INTENT_TYPE_QUERY_TRACES = 3;
+  INTENT_TYPE_EXECUTE_WORKFLOW = 4;
+  INTENT_TYPE_CREATE_INCIDENT = 5;
+  INTENT_TYPE_UPDATE_INCIDENT = 6;
+  INTENT_TYPE_DEPLOY_SERVICE = 7;
+  INTENT_TYPE_SCALE_SERVICE = 8;
+  INTENT_TYPE_ROLLBACK_DEPLOYMENT = 9;
+  INTENT_TYPE_RUN_TESTS = 10;
+  INTENT_TYPE_ANALYZE_PERFORMANCE = 11;
+  INTENT_TYPE_EXPLAIN_ERROR = 12;
+  INTENT_TYPE_GENERAL_QUESTION = 13;
+}
+
+message Entity {
+  EntityType type = 1;
+  string value = 2;
+  float confidence = 3;
+  string resolved_value = 4;
+}
+
+enum EntityType {
+  ENTITY_TYPE_UNSPECIFIED = 0;
+  ENTITY_TYPE_SERVICE = 1;
+  ENTITY_TYPE_METRIC = 2;
+  ENTITY_TYPE_LOG_LEVEL = 3;
+  ENTITY_TYPE_TIME_RANGE = 4;
+  ENTITY_TYPE_ENVIRONMENT = 5;
+  ENTITY_TYPE_VERSION = 6;
+  ENTITY_TYPE_USER = 7;
+  ENTITY_TYPE_ERROR_CODE = 8;
+}
+
+message NlpMetadata {
+  string model = 1;
+  uint32 latency_ms = 2;
+  bool cache_hit = 3;
+}
+
+// ==================== COMMON TYPES ====================
+
+message PaginationInfo {
+  uint32 page = 1;
+  uint32 page_size = 2;
+  uint32 total_items = 3;
+  uint32 total_pages = 4;
+  bool has_next = 5;
+  bool has_previous = 6;
+}
+
+message ErrorDetail {
+  string code = 1;
+  string message = 2;
+  google.protobuf.Struct details = 3;
+  repeated FieldError field_errors = 4;
+}
+
+message FieldError {
+  string field = 1;
+  string message = 2;
+  string constraint = 3;
+}

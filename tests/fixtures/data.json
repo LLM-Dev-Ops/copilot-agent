@@ -1,0 +1,187 @@
+{
+  "intents": [
+    {
+      "query": "Show me CPU usage for auth-service",
+      "expected_intent": "QueryMetrics",
+      "expected_confidence": 0.95,
+      "expected_entities": [
+        {
+          "type": "Service",
+          "value": "auth-service"
+        },
+        {
+          "type": "Metric",
+          "value": "cpu"
+        }
+      ]
+    },
+    {
+      "query": "Deploy payment-service to staging",
+      "expected_intent": "ExecuteWorkflow",
+      "expected_confidence": 0.97,
+      "expected_entities": [
+        {
+          "type": "Service",
+          "value": "payment-service"
+        },
+        {
+          "type": "Environment",
+          "value": "staging"
+        }
+      ]
+    },
+    {
+      "query": "Find error logs in checkout service from last hour",
+      "expected_intent": "QueryLogs",
+      "expected_confidence": 0.96,
+      "expected_entities": [
+        {
+          "type": "Service",
+          "value": "checkout"
+        },
+        {
+          "type": "LogLevel",
+          "value": "error"
+        },
+        {
+          "type": "TimeRange",
+          "value": "1h"
+        }
+      ]
+    },
+    {
+      "query": "What incidents are currently active?",
+      "expected_intent": "QueryIncidents",
+      "expected_confidence": 0.94,
+      "expected_entities": [
+        {
+          "type": "IncidentStatus",
+          "value": "active"
+        }
+      ]
+    },
+    {
+      "query": "Generate tests for the authentication module",
+      "expected_intent": "GenerateTests",
+      "expected_confidence": 0.93,
+      "expected_entities": [
+        {
+          "type": "Module",
+          "value": "authentication"
+        }
+      ]
+    },
+    {
+      "query": "Show memory usage trends",
+      "expected_intent": "QueryMetrics",
+      "expected_confidence": 0.92,
+      "expected_entities": [
+        {
+          "type": "Metric",
+          "value": "memory"
+        }
+      ]
+    }
+  ],
+  "promql_queries": [
+    {
+      "intent": "QueryMetrics",
+      "entities": [
+        { "type": "Service", "value": "auth-service" },
+        { "type": "Metric", "value": "cpu" }
+      ],
+      "expected_query": "rate(cpu_usage{service=\"auth-service\"}[5m])"
+    },
+    {
+      "intent": "QueryMetrics",
+      "entities": [
+        { "type": "Service", "value": "payment-service" },
+        { "type": "Metric", "value": "memory" },
+        { "type": "TimeRange", "value": "1h" }
+      ],
+      "expected_query": "avg_over_time(memory_usage_bytes{service=\"payment-service\"}[1h])"
+    }
+  ],
+  "logql_queries": [
+    {
+      "intent": "QueryLogs",
+      "entities": [
+        { "type": "Service", "value": "checkout" },
+        { "type": "LogLevel", "value": "error" }
+      ],
+      "expected_query": "{service=\"checkout\"} |= `error`"
+    }
+  ],
+  "workflows": [
+    {
+      "name": "simple-deployment",
+      "tasks": [
+        {
+          "id": "build",
+          "type": "Command",
+          "command": "docker build -t app:latest .",
+          "dependencies": []
+        },
+        {
+          "id": "deploy",
+          "type": "Deploy",
+          "command": "kubectl apply -f deployment.yaml",
+          "dependencies": ["build"]
+        }
+      ]
+    },
+    {
+      "name": "complex-ci-cd",
+      "tasks": [
+        {
+          "id": "lint",
+          "type": "Command",
+          "command": "cargo clippy",
+          "dependencies": []
+        },
+        {
+          "id": "unit_test",
+          "type": "Command",
+          "command": "cargo test --lib",
+          "dependencies": []
+        },
+        {
+          "id": "integration_test",
+          "type": "Command",
+          "command": "cargo test --test '*'",
+          "dependencies": ["lint", "unit_test"]
+        },
+        {
+          "id": "build",
+          "type": "Command",
+          "command": "cargo build --release",
+          "dependencies": ["integration_test"]
+        },
+        {
+          "id": "deploy_staging",
+          "type": "Deploy",
+          "command": "deploy to staging",
+          "dependencies": ["build"]
+        },
+        {
+          "id": "smoke_test",
+          "type": "Test",
+          "command": "run smoke tests",
+          "dependencies": ["deploy_staging"]
+        },
+        {
+          "id": "approval",
+          "type": "Approval",
+          "command": "await approval",
+          "dependencies": ["smoke_test"]
+        },
+        {
+          "id": "deploy_prod",
+          "type": "Deploy",
+          "command": "deploy to production",
+          "dependencies": ["approval"]
+        }
+      ]
+    }
+  ]
+}

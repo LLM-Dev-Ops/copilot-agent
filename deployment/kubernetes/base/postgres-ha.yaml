@@ -1,0 +1,165 @@
+---
+# PostgreSQL High Availability with Patroni
+# Using Zalando PostgreSQL Operator for production-grade HA
+apiVersion: acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: llm-copilot-postgres
+  namespace: llm-copilot
+  labels:
+    app: postgres
+spec:
+  teamId: llm-copilot
+  volume:
+    size: 100Gi
+    storageClass: fast-ssd  # Use high-performance storage class
+  numberOfInstances: 3  # 1 primary + 2 replicas for HA
+
+  users:
+    llm_user:
+      - superuser
+      - createdb
+
+  databases:
+    llm_copilot: llm_user
+
+  postgresql:
+    version: "15"
+    parameters:
+      # Performance tuning
+      shared_buffers: "4GB"
+      effective_cache_size: "12GB"
+      maintenance_work_mem: "1GB"
+      checkpoint_completion_target: "0.9"
+      wal_buffers: "16MB"
+      default_statistics_target: "100"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      work_mem: "20MB"
+      min_wal_size: "1GB"
+      max_wal_size: "4GB"
+      max_worker_processes: "4"
+      max_parallel_workers_per_gather: "2"
+      max_parallel_workers: "4"
+      max_parallel_maintenance_workers: "2"
+
+      # Connection settings
+      max_connections: "200"
+
+      # WAL settings for replication
+      wal_level: "replica"
+      max_wal_senders: "10"
+      max_replication_slots: "10"
+      hot_standby: "on"
+
+      # Logging
+      log_min_duration_statement: "1000"  # Log queries > 1s
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+      log_checkpoints: "on"
+      log_connections: "on"
+      log_disconnections: "on"
+      log_lock_waits: "on"
+      log_temp_files: "0"
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: "2"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+
+  # Patroni configuration
+  patroni:
+    initdb:
+      encoding: UTF8
+      locale: en_US.UTF-8
+      data-checksums: true
+    pg_hba:
+      - hostssl all all 0.0.0.0/0 md5
+      - host all all 0.0.0.0/0 md5
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 33554432  # 32MB
+    synchronous_mode: true
+    synchronous_mode_strict: false
+
+  # Backup configuration
+  enableShmVolume: true
+  enableLogicalBackup: true
+  logicalBackupSchedule: "30 2 * * *"  # Daily at 2:30 AM
+
+  # Connection pooler (PgBouncer)
+  enableConnectionPooler: true
+  connectionPooler:
+    numberOfInstances: 2
+    mode: transaction
+    schema: pooler
+    user: pooler
+    resources:
+      requests:
+        cpu: 300m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+  # Monitoring
+  sidecars:
+    - name: exporter
+      image: prometheuscommunity/postgres-exporter:v0.14.0
+      ports:
+        - name: metrics
+          containerPort: 9187
+          protocol: TCP
+      env:
+        - name: DATA_SOURCE_URI
+          value: "localhost:5432/postgres?sslmode=require"
+        - name: DATA_SOURCE_USER
+          valueFrom:
+            secretKeyRef:
+              name: llm-user.llm-copilot-postgres.credentials
+              key: username
+        - name: DATA_SOURCE_PASS
+          valueFrom:
+            secretKeyRef:
+              name: llm-user.llm-copilot-postgres.credentials
+              key: password
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+---
+# PodDisruptionBudget for PostgreSQL
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: llm-copilot-postgres-pdb
+  namespace: llm-copilot
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      application: llm-copilot-postgres
+      cluster-name: llm-copilot-postgres
+
+---
+# ServiceMonitor for PostgreSQL metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: llm-copilot-postgres
+  namespace: llm-copilot
+spec:
+  selector:
+    matchLabels:
+      application: llm-copilot-postgres
+  endpoints:
+    - port: metrics
+      interval: 30s

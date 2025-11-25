@@ -1,0 +1,73 @@
+# Test Dependencies Configuration
+
+[dev-dependencies]
+# Async testing
+tokio = { version = "1.35", features = ["full", "test-util"] }
+tokio-test = "0.4"
+
+# Testing frameworks
+rstest = "0.18"          # Parameterized tests
+proptest = "1.4"         # Property-based testing
+quickcheck = "1.0"       # Alternative property testing
+
+# Mocking
+mockall = "0.12"         # Mock objects
+wiremock = "0.6"         # HTTP mocking
+
+# Assertions
+assert_matches = "1.5"
+pretty_assertions = "1.4"
+
+# Test containers
+testcontainers = "0.15"
+
+# Fake data generation
+fake = "2.9"
+faker_rand = "0.1"
+
+# HTTP testing
+axum-test = "14.0"
+reqwest = { version = "0.11", features = ["json"] }
+hyper = { version = "1.0", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }
+
+# Performance testing
+criterion = { version = "0.5", features = ["async_tokio", "html_reports"] }
+
+# Coverage
+tarpaulin = "0.27"
+
+# Database testing
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-native-tls", "migrate"] }
+
+# Serialization
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+# Utilities
+chrono = "0.4"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+regex = "1.10"
+sha2 = "0.10"
+
+# Tracing in tests
+tracing-test = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Redis testing
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+# NATS testing
+async-nats = "0.33"
+
+[[bench]]
+name = "intent_classification"
+harness = false
+
+[[bench]]
+name = "context_retrieval"
+harness = false
+
+[[bench]]
+name = "workflow_execution"
+harness = false

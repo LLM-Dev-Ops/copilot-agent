@@ -1,0 +1,529 @@
+# LLM-CoPilot-Agent Metrics Catalog
+# Version: 1.0.0
+# Last Updated: 2025-11-25
+#
+# This document defines all metrics collected for monitoring the LLM-CoPilot-Agent system.
+# Metrics are organized by category and include collection frequency and retention policies.
+
+---
+# ============================================================================
+# REQUEST METRICS
+# ============================================================================
+
+request_metrics:
+
+  http_requests_total:
+    type: counter
+    description: "Total number of HTTP requests received"
+    labels:
+      - method          # HTTP method (GET, POST, etc.)
+      - endpoint        # API endpoint path
+      - status_code     # HTTP response code (200, 404, 500, etc.)
+      - environment     # Environment (dev, staging, production)
+      - region          # AWS region
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~5000 unique series"
+    slo_critical: true
+
+  http_request_duration_seconds:
+    type: histogram
+    description: "HTTP request latency in seconds"
+    labels:
+      - method
+      - endpoint
+      - status_code
+      - environment
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~3000 unique series"
+    slo_critical: true
+
+  http_request_size_bytes:
+    type: histogram
+    description: "HTTP request body size in bytes"
+    labels:
+      - method
+      - endpoint
+    buckets: [100, 1000, 10000, 100000, 1000000, 10000000]
+    collection_frequency: "realtime"
+    retention_period: "30d"
+    cardinality_estimate: "~500 unique series"
+
+  http_response_size_bytes:
+    type: histogram
+    description: "HTTP response body size in bytes"
+    labels:
+      - method
+      - endpoint
+      - status_code
+    buckets: [100, 1000, 10000, 100000, 1000000, 10000000]
+    collection_frequency: "realtime"
+    retention_period: "30d"
+    cardinality_estimate: "~500 unique series"
+
+  grpc_requests_total:
+    type: counter
+    description: "Total number of gRPC requests for module communication"
+    labels:
+      - method          # gRPC method
+      - service         # Target service (test-bench, observatory, etc.)
+      - status          # gRPC status code
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~1000 unique series"
+
+  grpc_request_duration_seconds:
+    type: histogram
+    description: "gRPC request latency in seconds"
+    labels:
+      - method
+      - service
+      - status
+    buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~800 unique series"
+
+# ============================================================================
+# BUSINESS METRICS
+# ============================================================================
+
+business_metrics:
+
+  sessions_total:
+    type: counter
+    description: "Total number of user sessions created"
+    labels:
+      - user_type       # developer, admin, service_account
+      - auth_method     # oauth, api_key, jwt
+      - environment
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~100 unique series"
+
+  sessions_active:
+    type: gauge
+    description: "Current number of active user sessions"
+    labels:
+      - user_type
+      - environment
+    collection_frequency: "30s"
+    retention_period: "90d"
+    cardinality_estimate: "~50 unique series"
+
+  conversations_total:
+    type: counter
+    description: "Total number of conversations initiated"
+    labels:
+      - conversation_type  # chat, command, workflow
+      - environment
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~100 unique series"
+
+  messages_total:
+    type: counter
+    description: "Total number of messages processed"
+    labels:
+      - message_type    # user_query, agent_response, system
+      - intent          # test_generation, observability_query, incident_detection, etc.
+      - environment
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~500 unique series"
+
+  workflow_executions_total:
+    type: counter
+    description: "Total number of workflow executions"
+    labels:
+      - workflow_type   # deployment, testing, incident_response
+      - status          # success, failure, cancelled
+      - environment
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~200 unique series"
+
+  workflow_execution_duration_seconds:
+    type: histogram
+    description: "Workflow execution duration in seconds"
+    labels:
+      - workflow_type
+      - status
+    buckets: [1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600]
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~100 unique series"
+
+  test_generations_total:
+    type: counter
+    description: "Total number of test generation requests"
+    labels:
+      - test_type       # unit, integration, e2e
+      - framework       # jest, pytest, junit
+      - status          # success, failure
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~100 unique series"
+
+  incidents_detected_total:
+    type: counter
+    description: "Total number of incidents detected"
+    labels:
+      - severity        # p0, p1, p2, p3
+      - auto_resolved   # true, false
+      - environment
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~50 unique series"
+
+# ============================================================================
+# INFRASTRUCTURE METRICS
+# ============================================================================
+
+infrastructure_metrics:
+
+  process_cpu_seconds_total:
+    type: counter
+    description: "Total user and system CPU time spent in seconds"
+    labels:
+      - pod_name
+      - node_name
+      - environment
+    collection_frequency: "15s"
+    retention_period: "90d"
+    cardinality_estimate: "~200 unique series"
+
+  process_resident_memory_bytes:
+    type: gauge
+    description: "Resident memory size in bytes"
+    labels:
+      - pod_name
+      - node_name
+      - environment
+    collection_frequency: "15s"
+    retention_period: "90d"
+    cardinality_estimate: "~200 unique series"
+
+  process_heap_bytes:
+    type: gauge
+    description: "Process heap size in bytes (Node.js specific)"
+    labels:
+      - pod_name
+      - heap_type       # used, total
+    collection_frequency: "15s"
+    retention_period: "90d"
+    cardinality_estimate: "~400 unique series"
+
+  process_open_fds:
+    type: gauge
+    description: "Number of open file descriptors"
+    labels:
+      - pod_name
+    collection_frequency: "30s"
+    retention_period: "30d"
+    cardinality_estimate: "~100 unique series"
+
+  nodejs_eventloop_lag_seconds:
+    type: histogram
+    description: "Event loop lag in seconds"
+    labels:
+      - pod_name
+    buckets: [0.001, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0]
+    collection_frequency: "15s"
+    retention_period: "30d"
+    cardinality_estimate: "~100 unique series"
+
+  nodejs_gc_duration_seconds:
+    type: histogram
+    description: "Garbage collection duration in seconds"
+    labels:
+      - pod_name
+      - gc_type         # major, minor, incremental
+    buckets: [0.001, 0.01, 0.05, 0.1, 0.5, 1.0]
+    collection_frequency: "realtime"
+    retention_period: "30d"
+    cardinality_estimate: "~300 unique series"
+
+  db_connections_active:
+    type: gauge
+    description: "Number of active database connections"
+    labels:
+      - pool_name       # primary, replica, analytics
+      - state           # idle, active, waiting
+    collection_frequency: "15s"
+    retention_period: "90d"
+    cardinality_estimate: "~50 unique series"
+
+  db_query_duration_seconds:
+    type: histogram
+    description: "Database query execution time in seconds"
+    labels:
+      - operation       # select, insert, update, delete
+      - table           # aggregated table name
+    buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~500 unique series"
+
+  redis_commands_total:
+    type: counter
+    description: "Total number of Redis commands executed"
+    labels:
+      - command         # get, set, hget, etc.
+      - status          # success, error
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~100 unique series"
+
+  redis_command_duration_seconds:
+    type: histogram
+    description: "Redis command execution time in seconds"
+    labels:
+      - command
+    buckets: [0.0001, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~50 unique series"
+
+# ============================================================================
+# LLM METRICS
+# ============================================================================
+
+llm_metrics:
+
+  llm_requests_total:
+    type: counter
+    description: "Total number of LLM API requests"
+    labels:
+      - provider        # anthropic, openai, custom
+      - model           # claude-3, gpt-4, etc.
+      - intent          # classification, generation, analysis
+      - status          # success, error, rate_limited
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~200 unique series"
+    slo_critical: true
+
+  llm_request_duration_seconds:
+    type: histogram
+    description: "LLM API request duration in seconds"
+    labels:
+      - provider
+      - model
+      - intent
+    buckets: [0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 60.0]
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~150 unique series"
+    slo_critical: true
+
+  llm_tokens_total:
+    type: counter
+    description: "Total number of tokens consumed"
+    labels:
+      - provider
+      - model
+      - token_type      # input, output
+      - intent
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~300 unique series"
+
+  llm_cost_usd:
+    type: counter
+    description: "Total LLM API cost in USD"
+    labels:
+      - provider
+      - model
+      - environment
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~50 unique series"
+
+  llm_context_window_usage_ratio:
+    type: histogram
+    description: "Ratio of context window used (0.0 to 1.0)"
+    labels:
+      - provider
+      - model
+    buckets: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    collection_frequency: "realtime"
+    retention_period: "30d"
+    cardinality_estimate: "~50 unique series"
+
+  llm_rate_limit_remaining:
+    type: gauge
+    description: "Remaining rate limit capacity"
+    labels:
+      - provider
+      - limit_type      # requests_per_minute, tokens_per_minute
+    collection_frequency: "30s"
+    retention_period: "30d"
+    cardinality_estimate: "~20 unique series"
+
+# ============================================================================
+# MODULE METRICS
+# ============================================================================
+
+module_metrics:
+
+  module_requests_total:
+    type: counter
+    description: "Total requests to integrated modules"
+    labels:
+      - module          # test_bench, observatory, incident_manager, orchestrator
+      - operation       # generate_test, query_metrics, create_incident, execute_workflow
+      - status          # success, error, timeout
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~200 unique series"
+
+  module_request_duration_seconds:
+    type: histogram
+    description: "Module request duration in seconds"
+    labels:
+      - module
+      - operation
+    buckets: [0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0]
+    collection_frequency: "realtime"
+    retention_period: "90d"
+    cardinality_estimate: "~150 unique series"
+
+  module_health_status:
+    type: gauge
+    description: "Module health status (1=healthy, 0=unhealthy)"
+    labels:
+      - module
+      - health_check_type  # liveness, readiness
+    collection_frequency: "30s"
+    retention_period: "90d"
+    cardinality_estimate: "~20 unique series"
+
+  module_circuit_breaker_state:
+    type: gauge
+    description: "Circuit breaker state (0=closed, 1=open, 2=half-open)"
+    labels:
+      - module
+    collection_frequency: "15s"
+    retention_period: "90d"
+    cardinality_estimate: "~10 unique series"
+
+# ============================================================================
+# SLI METRICS (Derived from Recording Rules)
+# ============================================================================
+
+sli_metrics:
+
+  sli_availability_ratio:
+    type: gauge
+    description: "Availability SLI: successful requests / total requests"
+    labels:
+      - environment
+      - window          # 5m, 1h, 24h, 7d, 30d
+    collection_frequency: "1m"
+    retention_period: "365d"
+    cardinality_estimate: "~20 unique series"
+    slo_target: "0.999"  # 99.9%
+
+  sli_latency_p95_seconds:
+    type: gauge
+    description: "Latency SLI: 95th percentile response time"
+    labels:
+      - endpoint_type   # simple, complex
+      - environment
+      - window
+    collection_frequency: "1m"
+    retention_period: "365d"
+    cardinality_estimate: "~30 unique series"
+    slo_target: "1.0"  # <1s for simple, <2s for complex
+
+  sli_error_rate_ratio:
+    type: gauge
+    description: "Error rate SLI: error requests / total requests"
+    labels:
+      - environment
+      - window
+    collection_frequency: "1m"
+    retention_period: "365d"
+    cardinality_estimate: "~20 unique series"
+    slo_target: "0.001"  # <0.1%
+
+# ============================================================================
+# CUSTOM APPLICATION METRICS
+# ============================================================================
+
+application_metrics:
+
+  intent_classification_accuracy:
+    type: gauge
+    description: "Intent classification accuracy (0.0 to 1.0)"
+    labels:
+      - intent_type
+    collection_frequency: "5m"
+    retention_period: "365d"
+    cardinality_estimate: "~20 unique series"
+
+  cache_hit_ratio:
+    type: gauge
+    description: "Cache hit ratio by cache type"
+    labels:
+      - cache_type      # response, embedding, artifact
+    collection_frequency: "1m"
+    retention_period: "90d"
+    cardinality_estimate: "~10 unique series"
+
+  queue_depth:
+    type: gauge
+    description: "Number of messages in processing queues"
+    labels:
+      - queue_name      # priority, standard, background
+      - priority        # high, normal, low
+    collection_frequency: "30s"
+    retention_period: "90d"
+    cardinality_estimate: "~20 unique series"
+
+  async_jobs_total:
+    type: counter
+    description: "Total number of asynchronous jobs processed"
+    labels:
+      - job_type        # test_generation, incident_analysis, workflow_execution
+      - status          # completed, failed, timeout
+    collection_frequency: "realtime"
+    retention_period: "365d"
+    cardinality_estimate: "~50 unique series"
+
+# ============================================================================
+# CARDINALITY MANAGEMENT
+# ============================================================================
+
+# Total estimated cardinality: ~13,000 unique time series
+# Prometheus memory usage estimate: ~1GB for 90d retention
+# Storage requirements: ~50GB for 90d retention with 15s scrape interval
+
+cardinality_guidelines:
+  - "Avoid using high-cardinality labels (user_id, request_id, timestamp)"
+  - "Use endpoint aggregation for long-tail endpoints (group as 'other')"
+  - "Limit status_code to categories (2xx, 3xx, 4xx, 5xx) when appropriate"
+  - "Use recording rules to pre-aggregate high-volume metrics"
+  - "Monitor cardinality with prometheus_tsdb_symbol_table_size_bytes"
+
+# ============================================================================
+# COLLECTION CONFIGURATION
+# ============================================================================
+
+collection_config:
+  prometheus_scrape_interval: "15s"
+  prometheus_evaluation_interval: "15s"
+  high_frequency_metrics_interval: "5s"  # For critical path metrics
+
+  retention_policies:
+    critical_metrics: "365d"      # SLI, business metrics
+    performance_metrics: "90d"    # Latency, throughput
+    debug_metrics: "30d"          # Detailed diagnostic metrics
+
+  storage_optimization:
+    compression: "enabled"
+    deduplication: "enabled"
+    downsampling_after: "90d"     # Reduce resolution for old data

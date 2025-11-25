@@ -1,0 +1,67 @@
+[package]
+name = "copilot-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Workspace crates
+copilot-core = { path = "../../crates/copilot-core" }
+copilot-config = { path = "../../crates/copilot-config" }
+copilot-api = { path = "../../crates/copilot-api" }
+copilot-llm = { path = "../../crates/copilot-llm" }
+copilot-memory = { path = "../../crates/copilot-memory" }
+copilot-rag = { path = "../../crates/copilot-rag" }
+copilot-workflows = { path = "../../crates/copilot-workflows" }
+copilot-plugins = { path = "../../crates/copilot-plugins" }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-util = "0.7"
+
+# Web framework
+axum = { version = "0.7", features = ["macros", "multipart", "ws"] }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
+tower = { version = "0.4", features = ["limit", "buffer", "timeout"] }
+tower-http = { version = "0.5", features = ["trace", "cors", "compression-gzip"] }
+
+# gRPC
+tonic = { version = "0.11", features = ["tls", "gzip"] }
+tonic-reflection = "0.11"
+prost = "0.12"
+
+# CLI
+clap = { version = "4.5", features = ["derive", "env"] }
+dotenvy = "0.15"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.22"
+opentelemetry = { version = "0.21", features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.14", features = ["tonic", "metrics"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+
+# Signal handling
+signal-hook = "0.3"
+signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
+
+# Metrics
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }

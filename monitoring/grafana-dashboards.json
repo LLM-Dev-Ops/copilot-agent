@@ -1,0 +1,734 @@
+{
+  "dashboards": [
+    {
+      "name": "Executive Dashboard - SLA Compliance",
+      "uid": "executive-sla",
+      "description": "High-level view of SLA compliance and service health for executive stakeholders",
+      "refresh": "30s",
+      "tags": ["executive", "sla", "overview"],
+      "panels": [
+        {
+          "id": 1,
+          "title": "Monthly Availability SLA",
+          "type": "stat",
+          "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+          "targets": [{
+            "expr": "sli:availability:ratio30d",
+            "legendFormat": "Availability"
+          }],
+          "options": {
+            "unit": "percentunit",
+            "decimals": 3,
+            "colorMode": "background",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.999, "color": "green"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Error Budget Remaining",
+          "type": "gauge",
+          "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+          "targets": [{
+            "expr": "slo:error_budget:consumed_percentage",
+            "legendFormat": "% Consumed"
+          }],
+          "options": {
+            "unit": "percent",
+            "max": 100,
+            "thresholds": {
+              "mode": "percentage",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 50, "color": "yellow"},
+                {"value": 75, "color": "orange"},
+                {"value": 90, "color": "red"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Composite Service Quality Score",
+          "type": "stat",
+          "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+          "targets": [{
+            "expr": "sli:composite:health_score",
+            "legendFormat": "Health Score"
+          }],
+          "options": {
+            "unit": "percent",
+            "colorMode": "background",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 95, "color": "yellow"},
+                {"value": 98, "color": "green"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Active Incidents",
+          "type": "stat",
+          "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+          "targets": [{
+            "expr": "ALERTS{alertstate=\"firing\",severity=~\"critical|high\"}",
+            "legendFormat": "Active Alerts"
+          }],
+          "options": {
+            "colorMode": "background",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "red"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "30-Day Availability Trend",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "sli:availability:ratio24h",
+            "legendFormat": "24h Rolling Availability"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0.99,
+              "max": 1.0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"value": 0.999, "color": "green"}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Error Budget Burn Rate",
+          "type": "timeseries",
+          "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6},
+          "targets": [
+            {
+              "expr": "slo:error_budget:burn_rate_1h",
+              "legendFormat": "1h burn rate"
+            },
+            {
+              "expr": "slo:error_budget:burn_rate_6h",
+              "legendFormat": "6h burn rate"
+            },
+            {
+              "expr": "slo:error_budget:burn_rate_24h",
+              "legendFormat": "24h burn rate"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"value": 0, "color": "green"},
+                  {"value": 1, "color": "yellow"},
+                  {"value": 5, "color": "orange"},
+                  {"value": 10, "color": "red"}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 7,
+          "title": "Monthly Request Volume",
+          "type": "stat",
+          "gridPos": {"x": 0, "y": 10, "w": 8, "h": 3},
+          "targets": [{
+            "expr": "sum(increase(http_requests_total[30d]))",
+            "legendFormat": "Total Requests (30d)"
+          }],
+          "options": {
+            "unit": "short",
+            "colorMode": "value"
+          }
+        },
+        {
+          "id": 8,
+          "title": "Monthly Error Count",
+          "type": "stat",
+          "gridPos": {"x": 8, "y": 10, "w": 8, "h": 3},
+          "targets": [{
+            "expr": "sum(increase(http_requests_total{status_code=~\"5..\"}[30d]))",
+            "legendFormat": "Total Errors (30d)"
+          }],
+          "options": {
+            "unit": "short",
+            "colorMode": "background",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1000, "color": "yellow"},
+                {"value": 10000, "color": "red"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "Monthly LLM Costs",
+          "type": "stat",
+          "gridPos": {"x": 16, "y": 10, "w": 8, "h": 3},
+          "targets": [{
+            "expr": "sum(increase(llm_cost_usd[30d]))",
+            "legendFormat": "Total Cost (30d)"
+          }],
+          "options": {
+            "unit": "currencyUSD",
+            "colorMode": "value"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Operations Dashboard - Real-time Health",
+      "uid": "operations-health",
+      "description": "Real-time operational metrics for on-call engineers and SREs",
+      "refresh": "10s",
+      "tags": ["operations", "monitoring", "real-time"],
+      "panels": [
+        {
+          "id": 10,
+          "title": "Request Rate (RPS)",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 0, "w": 8, "h": 6},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total[5m]))",
+              "legendFormat": "Total RPS"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{status_code=~\"2..\"}[5m]))",
+              "legendFormat": "Success (2xx)"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m]))",
+              "legendFormat": "Errors (5xx)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            }
+          }
+        },
+        {
+          "id": 11,
+          "title": "Error Rate %",
+          "type": "timeseries",
+          "gridPos": {"x": 8, "y": 0, "w": 8, "h": 6},
+          "targets": [{
+            "expr": "sli:error_rate:ratio5m * 100",
+            "legendFormat": "Error Rate"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "max": 5,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"value": 0, "color": "green"},
+                  {"value": 0.1, "color": "yellow"},
+                  {"value": 1, "color": "orange"},
+                  {"value": 5, "color": "red"}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 12,
+          "title": "Response Time Percentiles",
+          "type": "timeseries",
+          "gridPos": {"x": 16, "y": 0, "w": 8, "h": 6},
+          "targets": [
+            {
+              "expr": "sli:latency:p50_5m",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "sli:latency:p95_5m",
+              "legendFormat": "p95"
+            },
+            {
+              "expr": "sli:latency:p99_5m",
+              "legendFormat": "p99"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"value": 0, "color": "green"},
+                  {"value": 1, "color": "yellow"},
+                  {"value": 2, "color": "red"}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 13,
+          "title": "Active Pods",
+          "type": "stat",
+          "gridPos": {"x": 0, "y": 6, "w": 4, "h": 3},
+          "targets": [{
+            "expr": "count(up{job=\"llm-copilot-agent\"} == 1)",
+            "legendFormat": "Healthy Pods"
+          }],
+          "options": {
+            "unit": "short",
+            "colorMode": "background",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 2, "color": "yellow"},
+                {"value": 3, "color": "green"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 14,
+          "title": "CPU Usage",
+          "type": "gauge",
+          "gridPos": {"x": 4, "y": 6, "w": 4, "h": 3},
+          "targets": [{
+            "expr": "avg(instance:cpu:usage_percentage)",
+            "legendFormat": "Avg CPU %"
+          }],
+          "options": {
+            "unit": "percent",
+            "max": 100,
+            "thresholds": {
+              "mode": "percentage",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 70, "color": "yellow"},
+                {"value": 85, "color": "red"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 15,
+          "title": "Memory Usage",
+          "type": "gauge",
+          "gridPos": {"x": 8, "y": 6, "w": 4, "h": 3},
+          "targets": [{
+            "expr": "avg(instance:memory:usage_percentage)",
+            "legendFormat": "Avg Memory %"
+          }],
+          "options": {
+            "unit": "percent",
+            "max": 100,
+            "thresholds": {
+              "mode": "percentage",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 75, "color": "yellow"},
+                {"value": 90, "color": "red"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 16,
+          "title": "Database Connections",
+          "type": "timeseries",
+          "gridPos": {"x": 12, "y": 6, "w": 6, "h": 6},
+          "targets": [
+            {
+              "expr": "sum(db_connections_active{state=\"active\"})",
+              "legendFormat": "Active"
+            },
+            {
+              "expr": "sum(db_connections_active{state=\"idle\"})",
+              "legendFormat": "Idle"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          }
+        },
+        {
+          "id": 17,
+          "title": "Redis Hit Rate",
+          "type": "stat",
+          "gridPos": {"x": 18, "y": 6, "w": 6, "h": 3},
+          "targets": [{
+            "expr": "redis:cache:hit_ratio * 100",
+            "legendFormat": "Hit Rate"
+          }],
+          "options": {
+            "unit": "percent",
+            "colorMode": "background",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 70, "color": "yellow"},
+                {"value": 90, "color": "green"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 18,
+          "title": "Module Health Status",
+          "type": "status-history",
+          "gridPos": {"x": 0, "y": 12, "w": 12, "h": 4},
+          "targets": [
+            {
+              "expr": "module_health_status{health_check_type=\"readiness\"}",
+              "legendFormat": "{{module}}"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "title": "LLM API Latency (p95)",
+          "type": "timeseries",
+          "gridPos": {"x": 12, "y": 12, "w": 12, "h": 4},
+          "targets": [{
+            "expr": "llm:latency:p95_5m",
+            "legendFormat": "LLM p95 Latency"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"value": 0, "color": "green"},
+                  {"value": 5, "color": "yellow"},
+                  {"value": 10, "color": "red"}
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Debug Dashboard - Detailed Metrics",
+      "uid": "debug-detailed",
+      "description": "Detailed debugging metrics for troubleshooting issues",
+      "refresh": "30s",
+      "tags": ["debug", "troubleshooting", "detailed"],
+      "panels": [
+        {
+          "id": 20,
+          "title": "Latency by Endpoint (p95)",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+          "targets": [{
+            "expr": "sli:latency:p95_5m:by_endpoint",
+            "legendFormat": "{{endpoint}}"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": 21,
+          "title": "Request Rate by Endpoint",
+          "type": "timeseries",
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+          "targets": [{
+            "expr": "request:rate5m:by_endpoint",
+            "legendFormat": "{{endpoint}}"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            }
+          }
+        },
+        {
+          "id": 22,
+          "title": "Error Distribution by Status Code",
+          "type": "piechart",
+          "gridPos": {"x": 0, "y": 8, "w": 8, "h": 6},
+          "targets": [{
+            "expr": "sum by (status_code) (increase(http_requests_total{status_code=~\"[45]..\"}[1h]))",
+            "legendFormat": "{{status_code}}"
+          }]
+        },
+        {
+          "id": 23,
+          "title": "Database Query Latency by Operation",
+          "type": "timeseries",
+          "gridPos": {"x": 8, "y": 8, "w": 8, "h": 6},
+          "targets": [{
+            "expr": "histogram_quantile(0.95, sum by (operation, le) (rate(db_query_duration_seconds_bucket[5m])))",
+            "legendFormat": "{{operation}}"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": 24,
+          "title": "Event Loop Lag Distribution",
+          "type": "heatmap",
+          "gridPos": {"x": 16, "y": 8, "w": 8, "h": 6},
+          "targets": [{
+            "expr": "sum(increase(nodejs_eventloop_lag_seconds_bucket[5m])) by (le)",
+            "format": "heatmap"
+          }],
+          "dataFormat": "tsbuckets"
+        },
+        {
+          "id": 25,
+          "title": "GC Duration by Type",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 14, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "rate(nodejs_gc_duration_seconds_sum[5m]) by (gc_type)",
+            "legendFormat": "{{gc_type}}"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": 26,
+          "title": "Module Request Latency (p95)",
+          "type": "timeseries",
+          "gridPos": {"x": 12, "y": 14, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "module:latency:p95_5m",
+            "legendFormat": "{{module}}"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": 27,
+          "title": "LLM Token Usage by Provider",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 20, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "sum by (provider, model) (rate(llm_tokens_total[5m]))",
+            "legendFormat": "{{provider}}/{{model}}"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "tps"
+            }
+          }
+        },
+        {
+          "id": 28,
+          "title": "Circuit Breaker State",
+          "type": "status-history",
+          "gridPos": {"x": 12, "y": 20, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "module_circuit_breaker_state",
+            "legendFormat": "{{module}}"
+          }],
+          "fieldConfig": {
+            "mappings": [
+              {"value": 0, "text": "CLOSED", "color": "green"},
+              {"value": 1, "text": "OPEN", "color": "red"},
+              {"value": 2, "text": "HALF_OPEN", "color": "yellow"}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Business Dashboard - Usage & Costs",
+      "uid": "business-usage",
+      "description": "Business metrics including usage patterns and operational costs",
+      "refresh": "1m",
+      "tags": ["business", "usage", "costs"],
+      "panels": [
+        {
+          "id": 30,
+          "title": "Active Sessions",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "sum(sessions_active)",
+            "legendFormat": "Active Sessions"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          }
+        },
+        {
+          "id": 31,
+          "title": "Conversation Rate (per hour)",
+          "type": "timeseries",
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "business:conversations:rate1h",
+            "legendFormat": "Conversations/hour"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          }
+        },
+        {
+          "id": 32,
+          "title": "Messages by Intent",
+          "type": "piechart",
+          "gridPos": {"x": 0, "y": 6, "w": 8, "h": 6},
+          "targets": [{
+            "expr": "sum by (intent) (increase(messages_total[1h]))",
+            "legendFormat": "{{intent}}"
+          }]
+        },
+        {
+          "id": 33,
+          "title": "Workflow Success Rate",
+          "type": "stat",
+          "gridPos": {"x": 8, "y": 6, "w": 8, "h": 6},
+          "targets": [{
+            "expr": "business:workflows:success_rate * 100",
+            "legendFormat": "Success Rate"
+          }],
+          "options": {
+            "unit": "percent",
+            "colorMode": "background",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 80, "color": "yellow"},
+                {"value": 90, "color": "green"}
+              ]
+            }
+          }
+        },
+        {
+          "id": 34,
+          "title": "Test Generation Rate",
+          "type": "timeseries",
+          "gridPos": {"x": 16, "y": 6, "w": 8, "h": 6},
+          "targets": [{
+            "expr": "business:tests:generation_rate5m",
+            "legendFormat": "Tests/sec"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops"
+            }
+          }
+        },
+        {
+          "id": 35,
+          "title": "LLM Cost Over Time",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 12, "w": 12, "h": 6},
+          "targets": [
+            {
+              "expr": "llm:cost_rate:per_hour",
+              "legendFormat": "Hourly Cost"
+            },
+            {
+              "expr": "sum(increase(llm_cost_usd[24h]))",
+              "legendFormat": "Daily Cost"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD"
+            }
+          }
+        },
+        {
+          "id": 36,
+          "title": "LLM Cost by Provider",
+          "type": "piechart",
+          "gridPos": {"x": 12, "y": 12, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "sum by (provider) (increase(llm_cost_usd[24h]))",
+            "legendFormat": "{{provider}}"
+          }]
+        },
+        {
+          "id": 37,
+          "title": "Incident Detection Rate",
+          "type": "timeseries",
+          "gridPos": {"x": 0, "y": 18, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "business:incidents:detection_rate1h",
+            "legendFormat": "Incidents/hour"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          }
+        },
+        {
+          "id": 38,
+          "title": "Incidents by Severity",
+          "type": "bargauge",
+          "gridPos": {"x": 12, "y": 18, "w": 12, "h": 6},
+          "targets": [{
+            "expr": "sum by (severity) (increase(incidents_detected_total[24h]))",
+            "legendFormat": "{{severity}}"
+          }],
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient"
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2025-11-25",
+    "grafana_version": "10.0+",
+    "prometheus_datasource": "Prometheus",
+    "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h"],
+    "tags": ["llm-copilot-agent", "monitoring", "sla", "operations"]
+  }
+}

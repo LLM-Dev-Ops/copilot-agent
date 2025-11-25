@@ -1,0 +1,666 @@
+# Distributed Tracing Configuration for LLM-CoPilot-Agent
+# Version: 1.0.0
+# Last Updated: 2025-11-25
+#
+# OpenTelemetry configuration for distributed tracing with Jaeger
+# Includes span naming conventions, context propagation, and sampling strategies
+
+---
+# ============================================================================
+# OPENTELEMETRY CONFIGURATION
+# ============================================================================
+
+opentelemetry:
+  sdk_version: "1.19.0"
+  api_version: "1.7.0"
+
+  service:
+    name: "llm-copilot-agent"
+    version: "${APP_VERSION}"
+    namespace: "llm-devops"
+
+  resource_attributes:
+    service.name: "llm-copilot-agent"
+    service.version: "${APP_VERSION}"
+    service.namespace: "llm-devops"
+    service.instance.id: "${POD_NAME}"
+    deployment.environment: "${NODE_ENV}"
+    cloud.provider: "aws"
+    cloud.region: "${AWS_REGION}"
+    cloud.availability_zone: "${AWS_AVAILABILITY_ZONE}"
+    k8s.cluster.name: "${CLUSTER_NAME}"
+    k8s.namespace.name: "${NAMESPACE}"
+    k8s.pod.name: "${POD_NAME}"
+    k8s.node.name: "${NODE_NAME}"
+
+  # Trace exporter configuration
+  exporter:
+    type: "otlp"  # OpenTelemetry Protocol
+    endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+    protocol: "grpc"
+    timeout: "10s"
+    compression: "gzip"
+    headers:
+      authorization: "Bearer ${OTEL_AUTH_TOKEN}"
+
+  # Batch span processor (for production)
+  batch_processor:
+    max_queue_size: 2048
+    max_export_batch_size: 512
+    schedule_delay: "5s"
+    export_timeout: "30s"
+
+  # Simple span processor (for development)
+  simple_processor:
+    enabled: false  # Only for debugging
+
+# ============================================================================
+# SPAN NAMING CONVENTIONS
+# ============================================================================
+
+span_naming:
+
+  http_server:
+    format: "HTTP {method} {route}"
+    examples:
+      - "HTTP POST /api/v1/conversations"
+      - "HTTP GET /api/v1/workflows"
+      - "HTTP PUT /api/v1/incidents/{id}"
+    attributes:
+      - "http.method"
+      - "http.route"  # Use route pattern, not actual path
+      - "http.target"
+      - "http.status_code"
+      - "http.user_agent"
+      - "http.request_content_length"
+      - "http.response_content_length"
+
+  http_client:
+    format: "HTTP {method} {host}"
+    examples:
+      - "HTTP POST api.anthropic.com"
+      - "HTTP GET test-bench-api.internal"
+    attributes:
+      - "http.method"
+      - "http.url"
+      - "http.status_code"
+      - "http.request_content_length"
+      - "http.response_content_length"
+      - "net.peer.name"
+      - "net.peer.port"
+
+  grpc_server:
+    format: "{package}.{service}/{method}"
+    examples:
+      - "llm.copilot.v1.IntentService/ClassifyIntent"
+      - "llm.copilot.v1.WorkflowService/ExecuteWorkflow"
+    attributes:
+      - "rpc.system" # "grpc"
+      - "rpc.service"
+      - "rpc.method"
+      - "rpc.grpc.status_code"
+
+  grpc_client:
+    format: "{package}.{service}/{method}"
+    examples:
+      - "testbench.v1.TestService/GenerateTests"
+      - "observatory.v1.MetricsService/QueryMetrics"
+    attributes:
+      - "rpc.system"
+      - "rpc.service"
+      - "rpc.method"
+      - "rpc.grpc.status_code"
+      - "net.peer.name"
+      - "net.peer.port"
+
+  database:
+    format: "DB {operation} {table}"
+    examples:
+      - "DB SELECT conversations"
+      - "DB INSERT workflow_executions"
+      - "DB UPDATE user_sessions"
+    attributes:
+      - "db.system"  # "postgresql"
+      - "db.name"
+      - "db.user"
+      - "db.connection_string"  # Sanitized
+      - "db.operation"  # SELECT, INSERT, UPDATE, DELETE
+      - "db.table"
+      - "db.statement"  # Parameterized query
+      - "db.rows_affected"
+
+  cache:
+    format: "CACHE {operation} {key_prefix}"
+    examples:
+      - "CACHE GET user_context"
+      - "CACHE SET session_data"
+      - "CACHE DEL workflow_state"
+    attributes:
+      - "db.system"  # "redis"
+      - "db.operation"  # GET, SET, DEL, etc.
+      - "cache.key"  # Sanitized
+      - "cache.hit"  # Boolean
+
+  llm_api:
+    format: "LLM {provider} {model}"
+    examples:
+      - "LLM anthropic claude-3-sonnet"
+      - "LLM openai gpt-4"
+    attributes:
+      - "llm.provider"
+      - "llm.model"
+      - "llm.operation"  # completion, embedding, etc.
+      - "llm.request.temperature"
+      - "llm.request.max_tokens"
+      - "llm.request.input_tokens"
+      - "llm.response.output_tokens"
+      - "llm.response.finish_reason"
+      - "llm.cost_usd"
+
+  module_integration:
+    format: "MODULE {module} {operation}"
+    examples:
+      - "MODULE test-bench generate_tests"
+      - "MODULE observatory query_metrics"
+      - "MODULE incident-manager create_incident"
+    attributes:
+      - "module.name"
+      - "module.operation"
+      - "module.version"
+
+  internal_function:
+    format: "{component}.{function}"
+    examples:
+      - "intent-classifier.classify"
+      - "workflow-engine.execute"
+      - "context-manager.buildContext"
+    attributes:
+      - "code.function"
+      - "code.namespace"
+      - "code.filepath"
+      - "code.lineno"
+
+# ============================================================================
+# CONTEXT PROPAGATION
+# ============================================================================
+
+context_propagation:
+
+  # W3C Trace Context (primary)
+  w3c_trace_context:
+    enabled: true
+    headers:
+      - "traceparent"  # Format: 00-{trace-id}-{span-id}-{flags}
+      - "tracestate"   # Vendor-specific data
+
+  # B3 Propagation (Zipkin compatibility)
+  b3_propagation:
+    enabled: true
+    format: "multi"  # or "single"
+    headers:
+      - "X-B3-TraceId"
+      - "X-B3-SpanId"
+      - "X-B3-ParentSpanId"
+      - "X-B3-Sampled"
+      - "X-B3-Flags"
+
+  # Jaeger Propagation
+  jaeger_propagation:
+    enabled: true
+    headers:
+      - "uber-trace-id"  # Format: {trace-id}:{span-id}:{parent-span-id}:{flags}
+
+  # Custom headers
+  custom_headers:
+    - "X-Correlation-ID"
+    - "X-Request-ID"
+
+  # Baggage (cross-cutting concerns)
+  baggage:
+    enabled: true
+    max_size: 8192
+    max_members: 64
+    allowed_keys:
+      - "user.id"
+      - "session.id"
+      - "tenant.id"
+      - "feature.flags"
+
+  # Context injection/extraction
+  injection:
+    http_client: true
+    grpc_client: true
+    message_queue: true
+
+  extraction:
+    http_server: true
+    grpc_server: true
+    message_queue: true
+
+# ============================================================================
+# SAMPLING STRATEGIES
+# ============================================================================
+
+sampling:
+
+  # Default sampler
+  default:
+    type: "ParentBased"
+    root:
+      type: "TraceIdRatioBased"
+      ratio: 0.1  # Sample 10% of traces by default
+
+  # Environment-specific sampling
+  environments:
+    development:
+      ratio: 1.0  # Sample 100%
+
+    staging:
+      ratio: 0.5  # Sample 50%
+
+    production:
+      ratio: 0.1  # Sample 10%
+
+  # Adaptive sampling based on load
+  adaptive:
+    enabled: true
+    target_throughput: 1000  # traces per second
+    adjustment_interval: "30s"
+    min_ratio: 0.01  # Never go below 1%
+    max_ratio: 1.0   # Never exceed 100%
+
+  # Rule-based sampling
+  rules:
+    # Always sample errors
+    - name: "sample_errors"
+      condition:
+        attribute: "http.status_code"
+        operator: "gte"
+        value: 500
+      sample_rate: 1.0
+      priority: 100
+
+    # Always sample slow requests
+    - name: "sample_slow_requests"
+      condition:
+        attribute: "http.duration"
+        operator: "gte"
+        value: 2000  # 2 seconds
+      sample_rate: 1.0
+      priority: 90
+
+    # Sample critical endpoints more
+    - name: "sample_critical_endpoints"
+      condition:
+        attribute: "http.route"
+        operator: "in"
+        values:
+          - "/api/v1/incidents"
+          - "/api/v1/incidents/analyze"
+      sample_rate: 0.5
+      priority: 80
+
+    # Sample LLM calls more
+    - name: "sample_llm_calls"
+      condition:
+        attribute: "span.kind"
+        operator: "equals"
+        value: "llm_api"
+      sample_rate: 0.3
+      priority: 70
+
+    # Sample health checks less
+    - name: "sample_health_checks"
+      condition:
+        attribute: "http.route"
+        operator: "in"
+        values:
+          - "/health"
+          - "/ready"
+          - "/live"
+      sample_rate: 0.01
+      priority: 10
+
+  # Head-based vs Tail-based
+  tail_based:
+    enabled: true
+    decision_wait: "10s"
+    num_traces: 50000
+    policies:
+      - name: "error_policy"
+        type: "status_code"
+        status_code: "ERROR"
+
+      - name: "slow_trace_policy"
+        type: "latency"
+        threshold_ms: 2000
+
+      - name: "rate_limiting_policy"
+        type: "rate_limiting"
+        spans_per_second: 1000
+
+# ============================================================================
+# SPAN ATTRIBUTES
+# ============================================================================
+
+span_attributes:
+
+  # Standard semantic conventions
+  semantic_conventions:
+    version: "1.24.0"
+    url: "https://opentelemetry.io/docs/specs/semconv/"
+
+  # General attributes (all spans)
+  general:
+    - "service.name"
+    - "service.version"
+    - "deployment.environment"
+    - "telemetry.sdk.name"
+    - "telemetry.sdk.version"
+
+  # HTTP attributes
+  http:
+    request:
+      - "http.method"
+      - "http.url"
+      - "http.target"
+      - "http.host"
+      - "http.scheme"
+      - "http.route"
+      - "http.user_agent"
+      - "http.request_content_length"
+      - "http.request_content_type"
+
+    response:
+      - "http.status_code"
+      - "http.response_content_length"
+      - "http.response_content_type"
+
+  # Custom business attributes
+  business:
+    - "user.id"
+    - "session.id"
+    - "conversation.id"
+    - "workflow.id"
+    - "incident.id"
+    - "intent.type"
+    - "module.name"
+
+  # Performance attributes
+  performance:
+    - "duration_ms"
+    - "cache.hit"
+    - "db.rows_affected"
+    - "llm.tokens.input"
+    - "llm.tokens.output"
+
+  # Error attributes
+  error:
+    - "error"  # Boolean
+    - "error.type"
+    - "error.message"
+    - "error.stack"
+    - "exception.type"
+    - "exception.message"
+    - "exception.stacktrace"
+
+  # Cardinality management
+  cardinality:
+    # Limit high-cardinality attributes
+    http.url:
+      max_length: 256
+      redact_query_params: true
+      redact_patterns:
+        - "token"
+        - "key"
+        - "secret"
+
+    user.id:
+      hash: true  # Hash user IDs for privacy
+
+    db.statement:
+      max_length: 1024
+      parameterize: true
+
+# ============================================================================
+# SPAN EVENTS
+# ============================================================================
+
+span_events:
+
+  # Events to add to spans
+  events:
+    - name: "cache.miss"
+      description: "Cache miss occurred"
+      attributes:
+        - "cache.key"
+
+    - name: "retry.attempt"
+      description: "Retry attempt"
+      attributes:
+        - "retry.count"
+        - "retry.max"
+
+    - name: "circuit_breaker.open"
+      description: "Circuit breaker opened"
+      attributes:
+        - "circuit_breaker.name"
+
+    - name: "llm.rate_limit"
+      description: "LLM API rate limit hit"
+      attributes:
+        - "llm.provider"
+        - "rate_limit.type"
+
+# ============================================================================
+# SPAN LINKS
+# ============================================================================
+
+span_links:
+
+  # Link related spans
+  use_cases:
+    - name: "async_workflow"
+      description: "Link async workflow steps"
+      link_type: "follows_from"
+
+    - name: "batch_processing"
+      description: "Link batch items to batch span"
+      link_type: "child_of"
+
+  max_links_per_span: 32
+
+# ============================================================================
+# INSTRUMENTATION LIBRARIES
+# ============================================================================
+
+instrumentation:
+
+  # Automatic instrumentation
+  auto_instrumentation:
+    enabled: true
+    libraries:
+      - "@opentelemetry/instrumentation-http"
+      - "@opentelemetry/instrumentation-express"
+      - "@opentelemetry/instrumentation-grpc"
+      - "@opentelemetry/instrumentation-pg"  # PostgreSQL
+      - "@opentelemetry/instrumentation-redis"
+      - "@opentelemetry/instrumentation-dns"
+      - "@opentelemetry/instrumentation-net"
+
+  # Manual instrumentation points
+  manual_instrumentation:
+    - component: "intent-classifier"
+      operations:
+        - "classifyIntent"
+        - "extractEntities"
+
+    - component: "llm-client"
+      operations:
+        - "generateCompletion"
+        - "generateEmbedding"
+
+    - component: "workflow-engine"
+      operations:
+        - "executeWorkflow"
+        - "executeStep"
+
+    - component: "module-adapter"
+      operations:
+        - "callModule"
+        - "transformRequest"
+        - "transformResponse"
+
+# ============================================================================
+# TRACE-BASED DEBUGGING
+# ============================================================================
+
+trace_debugging:
+
+  # Debug mode (development only)
+  debug_mode:
+    enabled: false  # Set to true for debugging
+    console_exporter: true
+    detailed_logs: true
+
+  # Trace sampling for debugging
+  debug_sampling:
+    enabled: false
+    conditions:
+      - header: "X-Debug-Trace"
+        value: "true"
+        sample_rate: 1.0
+
+  # Export to multiple backends
+  multi_backend:
+    enabled: false
+    backends:
+      - name: "jaeger"
+        enabled: true
+      - name: "zipkin"
+        enabled: false
+      - name: "console"
+        enabled: false  # Enable for local debugging
+
+# ============================================================================
+# PERFORMANCE OPTIMIZATION
+# ============================================================================
+
+performance:
+
+  # Span processors
+  processors:
+    production:
+      type: "batch"
+      config:
+        max_queue_size: 2048
+        schedule_delay: "5s"
+        export_timeout: "30s"
+
+    development:
+      type: "simple"
+      config:
+        export_timeout: "10s"
+
+  # Memory limits
+  memory:
+    max_span_buffer_size: "100MB"
+    max_attribute_length: 4096
+    max_event_count: 128
+    max_link_count: 32
+
+  # Export limits
+  export:
+    max_export_batch_size: 512
+    max_concurrent_exports: 4
+    retry_count: 3
+    retry_delay: "1s"
+    retry_backoff: "exponential"
+
+# ============================================================================
+# JAEGER BACKEND CONFIGURATION
+# ============================================================================
+
+jaeger:
+
+  collector:
+    endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:14268"
+    grpc_endpoint: "jaeger-collector.monitoring.svc.cluster.local:14250"
+
+  query:
+    endpoint: "http://jaeger-query.monitoring.svc.cluster.local:16686"
+
+  storage:
+    type: "elasticsearch"
+    elasticsearch:
+      endpoint: "https://elasticsearch.monitoring.svc.cluster.local:9200"
+      index_prefix: "jaeger"
+
+  retention:
+    traces: "7d"
+
+  ui:
+    base_path: "/jaeger"
+    dependencies_menu: true
+    archive_enabled: true
+
+# ============================================================================
+# TRACE ANALYSIS QUERIES
+# ============================================================================
+
+trace_queries:
+
+  examples:
+    # Find slow traces
+    - name: "slow_traces"
+      description: "Find traces slower than 2 seconds"
+      query: "duration > 2s"
+
+    # Find error traces
+    - name: "error_traces"
+      description: "Find traces with errors"
+      query: "error=true"
+
+    # Find traces for specific user
+    - name: "user_traces"
+      description: "Find all traces for a user"
+      query: "user.id=123"
+
+    # Find traces with LLM calls
+    - name: "llm_traces"
+      description: "Find traces containing LLM API calls"
+      query: "span.name=~'LLM.*'"
+
+    # Find database bottlenecks
+    - name: "db_bottlenecks"
+      description: "Find slow database queries"
+      query: "span.name=~'DB.*' AND duration > 100ms"
+
+    # Find module integration issues
+    - name: "module_failures"
+      description: "Find failed module integrations"
+      query: "span.name=~'MODULE.*' AND error=true"
+
+# ============================================================================
+# COMPLIANCE AND PRIVACY
+# ============================================================================
+
+compliance:
+
+  # PII redaction
+  pii_redaction:
+    enabled: true
+    attributes_to_redact:
+      - "user.email"
+      - "user.phone"
+      - "credit_card"
+
+  # Data retention
+  retention:
+    traces: "7d"
+    aggregated_metrics: "90d"
+
+  # Data export controls
+  export_controls:
+    block_regions: []  # List of regions where export is blocked
+    encryption_required: true

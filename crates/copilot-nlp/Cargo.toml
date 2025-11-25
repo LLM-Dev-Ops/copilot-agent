@@ -1,0 +1,20 @@
+[package]
+name = "copilot-nlp"
+version = "0.1.0"
+edition = "2021"
+authors = ["LLM CoPilot Agent Team"]
+description = "Natural Language Processing engine for LLM CoPilot Agent"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+copilot-core = { path = "../copilot-core" }
+async-trait = "0.1"
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+regex = "1.10"
+lazy_static = "1.4"
+tracing = "0.1"
+thiserror = "1.0"
+
+[dev-dependencies]
+tokio-test = "0.4"

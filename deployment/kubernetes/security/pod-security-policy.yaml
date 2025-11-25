@@ -1,0 +1,82 @@
+# Pod Security Policy for LLM-CoPilot-Agent
+# Enforces security best practices for all pods
+
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: llm-copilot-restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'runtime/default'
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+    seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
+    apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
+spec:
+  # Privilege escalation
+  privileged: false
+  allowPrivilegeEscalation: false
+
+  # Required to prevent escalations to root
+  requiredDropCapabilities:
+    - ALL
+
+  # Allow core volume types
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+
+  # Deny host namespaces
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  hostPorts:
+    - min: 0
+      max: 0
+
+  # Run as non-root user
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+
+  # Run as non-root group
+  runAsGroup:
+    rule: 'RunAsAny'
+
+  # Supplemental groups
+  supplementalGroups:
+    rule: 'RunAsAny'
+
+  # FSGroup
+  fsGroup:
+    rule: 'RunAsAny'
+
+  # Read-only root filesystem
+  readOnlyRootFilesystem: true
+
+  # SELinux
+  seLinux:
+    rule: 'RunAsAny'
+
+  # Allow only specific sysctls
+  forbiddenSysctls:
+    - '*'
+
+  # Default add capabilities
+  defaultAddCapabilities: []
+
+  # Default allow privilege escalation
+  defaultAllowPrivilegeEscalation: false
+
+  # Allow specific capabilities (none)
+  allowedCapabilities: []
+
+  # Allow specific unsafe sysctls (none)
+  allowedUnsafeSysctls: []
+
+  # Allow specific host paths (none)
+  allowedHostPaths: []
+
+  # Allow specific FlexVolumes (none)
+  allowedFlexVolumes: []

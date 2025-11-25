@@ -1,0 +1,331 @@
+# SOC 2 Type II Evidence Collection Procedures
+# Automated evidence gathering for compliance audit
+
+evidenceCollection:
+
+  # CC6.1 - Logical and Physical Access Controls
+  CC6_1:
+    controls:
+      - id: "CC6.1.1"
+        description: "Authentication mechanisms"
+        evidence:
+          automated:
+            - type: "Configuration Export"
+              source: "Kubernetes ConfigMap"
+              path: "deployment/kubernetes/base/configmap.yaml"
+              schedule: "Daily"
+
+            - type: "Authentication Logs"
+              source: "Application logs"
+              query: "action=auth.*"
+              retention: "90 days"
+
+            - type: "MFA Enrollment Report"
+              source: "Database query"
+              query: "SELECT COUNT(*) FROM users WHERE mfa_enabled = true"
+              schedule: "Weekly"
+
+          manual:
+            - type: "Authentication Policy Document"
+              path: "docs/policies/authentication-policy.md"
+              reviewFrequency: "Quarterly"
+
+      - id: "CC6.1.2"
+        description: "Session management"
+        evidence:
+          automated:
+            - type: "Session Configuration"
+              source: "Redis configuration"
+              schedule: "Daily"
+
+            - type: "Session Timeout Settings"
+              source: "Application code"
+              path: "services/auth/session.ts"
+
+  # CC6.2 - New User Provisioning
+  CC6_2:
+    controls:
+      - id: "CC6.2.1"
+        description: "User provisioning process"
+        evidence:
+          manual:
+            - type: "Provisioning Procedure"
+              path: "docs/procedures/user-provisioning.md"
+
+            - type: "Background Check Records"
+              path: "hr/background-checks/"
+              storage: "Secure HR system"
+
+          automated:
+            - type: "User Creation Audit Log"
+              source: "Audit logs"
+              query: "action=user.create"
+              retention: "90 days"
+
+  # CC6.3 - Credential Lifecycle
+  CC6_3:
+    controls:
+      - id: "CC6.3.1"
+        description: "Password policy enforcement"
+        evidence:
+          automated:
+            - type: "Password Policy Configuration"
+              source: "Application code"
+              path: "services/auth/password-policy.ts"
+
+            - type: "Password Change Audit"
+              source: "Audit logs"
+              query: "action=password.change"
+              retention: "90 days"
+
+      - id: "CC6.3.2"
+        description: "Access reviews"
+        evidence:
+          automated:
+            - type: "Quarterly Access Review Report"
+              source: "Custom script"
+              script: "scripts/generate-access-report.sh"
+              schedule: "Quarterly"
+
+          manual:
+            - type: "Access Review Approval"
+              path: "compliance/access-reviews/"
+              format: "PDF with manager signatures"
+
+  # CC6.6 - Encryption
+  CC6_6:
+    controls:
+      - id: "CC6.6.1"
+        description: "Data encryption at rest"
+        evidence:
+          automated:
+            - type: "Database Encryption Status"
+              source: "AWS RDS API"
+              query: "describe-db-instances"
+              attribute: "StorageEncrypted"
+              schedule: "Daily"
+
+            - type: "S3 Bucket Encryption"
+              source: "AWS S3 API"
+              query: "get-bucket-encryption"
+              schedule: "Daily"
+
+            - type: "EBS Volume Encryption"
+              source: "AWS EC2 API"
+              query: "describe-volumes"
+              attribute: "Encrypted"
+              schedule: "Daily"
+
+      - id: "CC6.6.2"
+        description: "Data encryption in transit"
+        evidence:
+          automated:
+            - type: "TLS Configuration"
+              source: "NGINX Ingress ConfigMap"
+              path: "deployment/kubernetes/base/ingress.yaml"
+              attributes:
+                - "ssl-protocols: TLSv1.3"
+                - "ssl-ciphers"
+              schedule: "Daily"
+
+            - type: "Certificate Expiry Monitoring"
+              source: "cert-manager"
+              schedule: "Daily"
+              alert: "30 days before expiry"
+
+  # CC7.2 - System Monitoring
+  CC7_2:
+    controls:
+      - id: "CC7.2.1"
+        description: "Monitoring and alerting"
+        evidence:
+          automated:
+            - type: "Alert Rules Configuration"
+              source: "Prometheus"
+              path: "deployment/observability/prometheus-config.yaml"
+              schedule: "Daily"
+
+            - type: "Alert History"
+              source: "PagerDuty API"
+              query: "incidents"
+              retention: "90 days"
+              schedule: "Weekly"
+
+            - type: "Monitoring Dashboard Screenshots"
+              source: "Grafana API"
+              schedule: "Monthly"
+
+  # CC7.3 - Backup and Recovery
+  CC7_3:
+    controls:
+      - id: "CC7.3.1"
+        description: "Backup procedures"
+        evidence:
+          automated:
+            - type: "Backup Job Status"
+              source: "Velero"
+              command: "velero backup get"
+              schedule: "Daily"
+
+            - type: "Backup Storage Verification"
+              source: "AWS S3"
+              path: "s3://llm-copilot-backups/"
+              schedule: "Daily"
+
+      - id: "CC7.3.2"
+        description: "Disaster recovery testing"
+        evidence:
+          manual:
+            - type: "DR Test Results"
+              path: "compliance/dr-tests/"
+              schedule: "Quarterly"
+              requiredSignoff: "CTO"
+
+  # CC8.1 - Change Management
+  CC8_1:
+    controls:
+      - id: "CC8.1.1"
+        description: "Change approval process"
+        evidence:
+          automated:
+            - type: "GitHub PR Records"
+              source: "GitHub API"
+              query: "pulls?state=closed"
+              attributes:
+                - "approvals"
+                - "reviewers"
+                - "merge_commit"
+              retention: "1 year"
+
+            - type: "Deployment History"
+              source: "ArgoCD API"
+              query: "applications/history"
+              retention: "1 year"
+
+      - id: "CC8.1.2"
+        description: "Change testing"
+        evidence:
+          automated:
+            - type: "CI/CD Pipeline Results"
+              source: "GitHub Actions"
+              query: "workflow_runs"
+              retention: "90 days"
+
+            - type: "Test Coverage Reports"
+              source: "Jest/Coverage"
+              path: "coverage/"
+              schedule: "Per commit"
+
+  # CC9.2 - Business Continuity
+  CC9_2:
+    controls:
+      - id: "CC9.2.1"
+        description: "Multi-region deployment"
+        evidence:
+          automated:
+            - type: "Infrastructure Configuration"
+              source: "Terraform state"
+              path: "deployment/terraform/"
+              attributes:
+                - "multi-az: true"
+                - "multi-region: true"
+              schedule: "Daily"
+
+      - id: "CC9.2.2"
+        description: "Failover testing"
+        evidence:
+          manual:
+            - type: "Failover Test Report"
+              path: "compliance/failover-tests/"
+              schedule: "Quarterly"
+
+# Automated Evidence Collection Scripts
+automationScripts:
+
+  - name: "daily-evidence-collection"
+    schedule: "0 2 * * *"  # 2 AM daily
+    steps:
+      - "Collect Kubernetes configurations"
+      - "Export database encryption status"
+      - "Check S3 bucket encryption"
+      - "Verify TLS configuration"
+      - "Export alert configurations"
+      - "Check backup status"
+      - "Upload to evidence repository"
+    output: "s3://llm-copilot-compliance/evidence/daily/"
+
+  - name: "weekly-evidence-collection"
+    schedule: "0 3 * * 0"  # 3 AM Sunday
+    steps:
+      - "Generate user access report"
+      - "Export MFA enrollment stats"
+      - "Collect alert history"
+      - "Generate change management report"
+      - "Upload to evidence repository"
+    output: "s3://llm-copilot-compliance/evidence/weekly/"
+
+  - name: "monthly-evidence-collection"
+    schedule: "0 4 1 * *"  # 4 AM 1st of month
+    steps:
+      - "Capture monitoring dashboard screenshots"
+      - "Generate security scan reports"
+      - "Export vulnerability scan results"
+      - "Collect incident reports"
+      - "Upload to evidence repository"
+    output: "s3://llm-copilot-compliance/evidence/monthly/"
+
+  - name: "quarterly-evidence-collection"
+    schedule: "0 5 1 1,4,7,10 *"  # 5 AM 1st of quarter
+    steps:
+      - "Generate access review report"
+      - "Collect DR test results"
+      - "Generate security awareness training report"
+      - "Export penetration test results"
+      - "Generate executive summary"
+      - "Upload to evidence repository"
+    output: "s3://llm-copilot-compliance/evidence/quarterly/"
+
+# Evidence Storage and Retention
+evidenceStorage:
+  location: "s3://llm-copilot-compliance/evidence/"
+  encryption: "AES-256"
+  retention: "7 years"
+  accessControl:
+    - role: "Compliance Team"
+      permissions: "read/write"
+    - role: "Auditors"
+      permissions: "read"
+    - role: "Security Team"
+      permissions: "read"
+  backup:
+    enabled: true
+    destination: "s3://llm-copilot-compliance-backup/"
+    frequency: "Daily"
+
+# Audit Preparation Checklist
+auditPreparation:
+  timeline: "60 days before audit"
+  tasks:
+    - task: "Review all policies and procedures"
+      owner: "Compliance Team"
+      deadline: "45 days before audit"
+
+    - task: "Collect all automated evidence"
+      owner: "DevOps Team"
+      deadline: "30 days before audit"
+
+    - task: "Conduct internal control testing"
+      owner: "Internal Audit"
+      deadline: "30 days before audit"
+
+    - task: "Remediate any findings"
+      owner: "Engineering Team"
+      deadline: "15 days before audit"
+
+    - task: "Prepare evidence binder"
+      owner: "Compliance Team"
+      deadline: "7 days before audit"
+
+    - task: "Schedule auditor interviews"
+      owner: "Compliance Team"
+      deadline: "7 days before audit"

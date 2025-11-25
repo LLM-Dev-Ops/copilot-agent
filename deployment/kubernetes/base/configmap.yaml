@@ -1,0 +1,61 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-copilot-config
+  namespace: llm-copilot
+  labels:
+    app: llm-copilot-agent
+    version: v1.0.0
+data:
+  # Application Configuration
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  PORT: "3000"
+  METRICS_PORT: "9090"
+  HEALTH_CHECK_PATH: "/health"
+  READINESS_CHECK_PATH: "/ready"
+
+  # Feature Flags
+  ENABLE_TEST_GENERATION: "true"
+  ENABLE_OBSERVABILITY: "true"
+  ENABLE_INCIDENT_MANAGEMENT: "true"
+  ENABLE_WORKFLOW_ORCHESTRATION: "true"
+
+  # Performance Tuning
+  MAX_CONCURRENT_REQUESTS: "100"
+  REQUEST_TIMEOUT_MS: "30000"
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "1000"
+
+  # Module Integration Endpoints
+  TEST_BENCH_URL: "http://llm-test-bench.llm-copilot.svc.cluster.local:3001"
+  OBSERVATORY_URL: "http://llm-observatory.llm-copilot.svc.cluster.local:3002"
+  INCIDENT_MANAGER_URL: "http://llm-incident-manager.llm-copilot.svc.cluster.local:3003"
+  ORCHESTRATOR_URL: "http://llm-orchestrator.llm-copilot.svc.cluster.local:3004"
+
+  # Database Configuration
+  DATABASE_POOL_MIN: "2"
+  DATABASE_POOL_MAX: "10"
+  DATABASE_TIMEOUT_MS: "5000"
+
+  # Redis Configuration
+  REDIS_CLUSTER_MODE: "true"
+  REDIS_MAX_RETRIES: "3"
+  REDIS_RETRY_DELAY_MS: "1000"
+
+  # Observability
+  TELEMETRY_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  METRICS_ENABLED: "true"
+  JAEGER_AGENT_HOST: "jaeger-agent.observability.svc.cluster.local"
+  JAEGER_AGENT_PORT: "6831"
+
+  # Security
+  CORS_ENABLED: "true"
+  CORS_ORIGINS: "https://*.llmdevops.io"
+  RATE_LIMITING_ENABLED: "true"
+
+  # Circuit Breaker
+  CIRCUIT_BREAKER_THRESHOLD: "5"
+  CIRCUIT_BREAKER_TIMEOUT_MS: "10000"
+  CIRCUIT_BREAKER_RESET_TIMEOUT_MS: "60000"
