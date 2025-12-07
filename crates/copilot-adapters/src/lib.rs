@@ -3,8 +3,6 @@ pub mod testbench;
 pub mod observatory;
 pub mod incident;
 pub mod orchestrator;
-pub mod circuit_breaker;
-pub mod retry;
 
 // Phase 2B: LLM-Dev-Ops Ecosystem Adapters
 pub mod llm_devops;
@@ -24,8 +22,19 @@ pub use testbench::TestBenchClient;
 pub use observatory::ObservatoryClient;
 pub use incident::IncidentClient;
 pub use orchestrator::OrchestratorClient;
-pub use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitState};
-pub use retry::{RetryPolicy, with_retry};
+
+// Phase 2B: Re-export resilience patterns from copilot-infra instead of local duplicates
+// This eliminates code duplication and ensures consistent resilience behavior across the platform
+pub use copilot_infra::resilience::{
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerState,
+    RetryPolicy, RetryConfig, ExponentialBackoff, FixedDelay,
+    Bulkhead, BulkheadConfig,
+    TimeoutPolicy, TimeoutError,
+    ResilienceBuilder, ResilienceError,
+};
+
+// Backwards compatibility alias for CircuitState (was CircuitBreakerState in infra)
+pub type CircuitState = CircuitBreakerState;
 
 // Re-export LLM-Dev-Ops adapters
 pub use llm_devops::{

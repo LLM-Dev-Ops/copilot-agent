@@ -8,6 +8,7 @@ description = "Adapter implementations for LLM CoPilot Agent modules"
 
 [dependencies]
 copilot-core = { path = "../copilot-core" }
+copilot-infra = { path = "../copilot-infra" }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
