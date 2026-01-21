@@ -9,10 +9,7 @@ use axum::{
 };
 use serde_json::json;
 use std::net::SocketAddr;
-use tower_http::{
-    trace::TraceLayer,
-    cors::CorsLayer,
-};
+use tower_http::trace::TraceLayer;
 use tracing::info;
 
 use copilot_api::create_router;
@@ -61,13 +58,12 @@ impl Server {
         // Create API router from copilot-api crate
         let api_router = create_router(api_state);
 
-        // Combine routes
+        // Combine routes (CORS is handled by api_router)
         Router::new()
             .route("/", get(root))
             .route("/health", get(health_check))
             .nest("/api", api_router)
             .layer(TraceLayer::new_for_http())
-            .layer(CorsLayer::permissive())
     }
 }
 

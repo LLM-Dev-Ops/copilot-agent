@@ -59,28 +59,34 @@ pub fn create_router(state: AppState) -> Router {
 
 /// Configure CORS layer
 fn cors_layer() -> CorsLayer {
-    CorsLayer::new()
-        .allow_origin(
-            std::env::var("CORS_ALLOWED_ORIGINS")
-                .unwrap_or_else(|_| "*".to_string())
-                .parse::<HeaderValue>()
-                .unwrap_or(HeaderValue::from_static("*")),
-        )
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::DELETE,
-            Method::OPTIONS,
-        ])
-        .allow_headers([
-            header::AUTHORIZATION,
-            header::ACCEPT,
-            header::CONTENT_TYPE,
-            header::HeaderName::from_static("x-request-id"),
-        ])
-        .allow_credentials(true)
-        .max_age(Duration::from_secs(3600))
+    let origins = std::env::var("CORS_ALLOWED_ORIGINS")
+        .unwrap_or_else(|_| "*".to_string());
+
+    // Use permissive CORS for wildcard origins (can't combine credentials with *)
+    if origins == "*" {
+        CorsLayer::permissive()
+    } else {
+        CorsLayer::new()
+            .allow_origin(
+                origins.parse::<HeaderValue>()
+                    .unwrap_or(HeaderValue::from_static("*")),
+            )
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers([
+                header::AUTHORIZATION,
+                header::ACCEPT,
+                header::CONTENT_TYPE,
+                header::HeaderName::from_static("x-request-id"),
+            ])
+            .allow_credentials(true)
+            .max_age(Duration::from_secs(3600))
+    }
 }
 
 #[cfg(test)]
