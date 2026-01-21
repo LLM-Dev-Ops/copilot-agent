@@ -1,5 +1,6 @@
 //! CLI command implementations
 
+pub mod agent;
 pub mod ask;
 pub mod benchmark;
 pub mod chat;

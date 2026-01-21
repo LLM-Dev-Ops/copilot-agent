@@ -1,0 +1,157 @@
+# =============================================================================
+# LLM-CONNECTOR-HUB UNIFIED SERVICE CONFIGURATION
+# Google Cloud Run Service Definition
+# =============================================================================
+#
+# SERVICE TOPOLOGY:
+# - One unified service: llm-connector-hub
+# - All agents share runtime, configuration, and telemetry
+# - No agent is deployed as a standalone service
+#
+# EXPOSED AGENT ENDPOINTS:
+# - /api/v1/connectors/erp        - ERP Surface Agent
+# - /api/v1/connectors/database   - Database Query Agent
+# - /api/v1/connectors/webhook    - Webhook Listener Agent
+# - /api/v1/connectors/normalize  - Event Normalization Agent
+# - /api/v1/connectors/auth       - Auth / Identity Agent
+# - /health                       - Health check
+# - /ready                        - Readiness check
+# - /metrics                      - Prometheus metrics
+# =============================================================================
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: llm-connector-hub
+  namespace: agentics
+  labels:
+    app: llm-connector-hub
+    platform: agentics-dev
+    tier: boundary-layer
+    component: external-integration
+  annotations:
+    run.googleapis.com/description: "LLM Connector Hub - External Integration & Platform Boundary Layer"
+    run.googleapis.com/ingress: all
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        # Autoscaling configuration
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "100"
+        autoscaling.knative.dev/target: "80"
+
+        # CPU allocation
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+
+        # VPC connector for internal services
+        run.googleapis.com/vpc-access-connector: projects/agentics-dev/locations/us-central1/connectors/agentics-vpc-connector
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+
+        # Execution environment
+        run.googleapis.com/execution-environment: gen2
+
+      labels:
+        app: llm-connector-hub
+        version: "1.0.0"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: llm-connector-hub-sa
+
+      containers:
+        - name: llm-connector-hub
+          image: gcr.io/agentics-dev/llm-connector-hub:latest
+
+          ports:
+            - name: http1
+              containerPort: 8080
+              protocol: TCP
+
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+            requests:
+              cpu: "1"
+              memory: 1Gi
+
+          env:
+            # Service identification
+            - name: SERVICE_NAME
+              value: llm-connector-hub
+            - name: SERVICE_VERSION
+              value: "1.0.0"
+            - name: PLATFORM_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: connector-hub-config
+                  key: PLATFORM_ENV
+
+            # RuVector persistence (ONLY persistence layer)
+            - name: RUVECTOR_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: connector-hub-config
+                  key: RUVECTOR_SERVICE_URL
+            - name: RUVECTOR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connector-hub-secrets
+                  key: RUVECTOR_API_KEY
+
+            # Telemetry (LLM-Observatory)
+            - name: TELEMETRY_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: connector-hub-config
+                  key: TELEMETRY_ENDPOINT
+            - name: TELEMETRY_ENABLED
+              value: "true"
+
+            # Agent configuration
+            - name: AGENT_TIMEOUT_MS
+              value: "30000"
+            - name: MAX_PAYLOAD_SIZE_MB
+              value: "10"
+            - name: ENABLE_REQUEST_LOGGING
+              value: "true"
+
+            # Google Cloud specific
+            - name: GOOGLE_CLOUD_PROJECT
+              value: agentics-dev
+            - name: GOOGLE_CLOUD_REGION
+              value: us-central1
+
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+            timeoutSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+  traffic:
+    - percent: 100
+      latestRevision: true

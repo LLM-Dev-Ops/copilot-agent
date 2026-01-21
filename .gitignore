@@ -49,3 +49,14 @@ criterion/
 # Temporary files
 tmp/
 temp/
+
+# Claude Code / Claude Flow
+.claude/
+.claude-flow/
+.mcp.json
+.swarm/
+CLAUDE.md
+
+# Google Cloud SDK (local install)
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz

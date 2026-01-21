@@ -1,0 +1,261 @@
+# =============================================================================
+# LLM-CONNECTOR-HUB CLOUD BUILD CONFIGURATION
+# Google Cloud Build Pipeline for CI/CD
+# =============================================================================
+#
+# PIPELINE STAGES:
+# 1. Build Docker image
+# 2. Run tests
+# 3. Security scan
+# 4. Push to GCR
+# 5. Deploy to Cloud Run
+# 6. Verify deployment
+# =============================================================================
+
+steps:
+  # ==========================================================================
+  # STAGE 1: Build Docker Image
+  # ==========================================================================
+  - id: 'build-image'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/llm-connector-hub:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/llm-connector-hub:$BRANCH_NAME'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/llm-connector-hub:latest'
+      - '-f'
+      - 'deployment/gcp/llm-connector-hub/Dockerfile'
+      - '--build-arg'
+      - 'SERVICE_VERSION=$COMMIT_SHA'
+      - '--build-arg'
+      - 'BUILD_DATE=$BUILD_ID'
+      - '.'
+    waitFor: ['-']
+
+  # ==========================================================================
+  # STAGE 2: Run Unit Tests
+  # ==========================================================================
+  - id: 'run-tests'
+    name: 'gcr.io/$PROJECT_ID/llm-connector-hub:$COMMIT_SHA'
+    entrypoint: 'npm'
+    args: ['run', 'test:ci']
+    env:
+      - 'NODE_ENV=test'
+      - 'PLATFORM_ENV=test'
+    waitFor: ['build-image']
+
+  # ==========================================================================
+  # STAGE 3: Security Scan
+  # ==========================================================================
+  - id: 'security-scan'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud artifacts docker images scan \
+          gcr.io/$PROJECT_ID/llm-connector-hub:$COMMIT_SHA \
+          --format='value(response.scan)' > /workspace/scan_id.txt
+
+        gcloud artifacts docker images list-vulnerabilities \
+          $(cat /workspace/scan_id.txt) \
+          --format='table(vulnerability.effectiveSeverity, vulnerability.cvssScore, vulnerability.packageIssue.affectedPackage, vulnerability.packageIssue.fixedPackage)' \
+          > /workspace/vulnerabilities.txt
+
+        # Fail on CRITICAL vulnerabilities
+        CRITICAL_COUNT=$(gcloud artifacts docker images list-vulnerabilities \
+          $(cat /workspace/scan_id.txt) \
+          --filter="vulnerability.effectiveSeverity=CRITICAL" \
+          --format='value(vulnerability)' | wc -l)
+
+        if [ "$CRITICAL_COUNT" -gt "0" ]; then
+          echo "CRITICAL vulnerabilities found!"
+          cat /workspace/vulnerabilities.txt
+          exit 1
+        fi
+
+        echo "Security scan passed"
+    waitFor: ['build-image']
+
+  # ==========================================================================
+  # STAGE 4: Push to Container Registry
+  # ==========================================================================
+  - id: 'push-image'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - 'gcr.io/$PROJECT_ID/llm-connector-hub'
+    waitFor: ['run-tests', 'security-scan']
+
+  # ==========================================================================
+  # STAGE 5: Apply ConfigMap and Secrets
+  # ==========================================================================
+  - id: 'apply-config'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Create/update ConfigMap
+        gcloud run services update llm-connector-hub \
+          --region=us-central1 \
+          --update-env-vars="^:^PLATFORM_ENV=${_PLATFORM_ENV}:RUVECTOR_SERVICE_URL=${_RUVECTOR_SERVICE_URL}:TELEMETRY_ENDPOINT=${_TELEMETRY_ENDPOINT}" \
+          --quiet || true
+    waitFor: ['push-image']
+
+  # ==========================================================================
+  # STAGE 6: Deploy to Cloud Run
+  # ==========================================================================
+  - id: 'deploy-service'
+    name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'llm-connector-hub'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/llm-connector-hub:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--service-account'
+      - 'llm-connector-hub-sa@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--min-instances'
+      - '1'
+      - '--max-instances'
+      - '100'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '300'
+      - '--concurrency'
+      - '80'
+      - '--port'
+      - '8080'
+      - '--set-env-vars'
+      - 'SERVICE_NAME=llm-connector-hub,SERVICE_VERSION=$COMMIT_SHA,GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
+      - '--allow-unauthenticated'
+      - '--ingress'
+      - 'all'
+      - '--execution-environment'
+      - 'gen2'
+      - '--cpu-boost'
+      - '--no-cpu-throttling'
+    waitFor: ['apply-config']
+
+  # ==========================================================================
+  # STAGE 7: Verify Deployment
+  # ==========================================================================
+  - id: 'verify-deployment'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+
+        # Get service URL
+        SERVICE_URL=$(gcloud run services describe llm-connector-hub \
+          --region=us-central1 \
+          --format='value(status.url)')
+
+        echo "Service URL: $SERVICE_URL"
+
+        # Wait for service to be ready
+        echo "Waiting for service to be ready..."
+        sleep 10
+
+        # Health check
+        echo "Running health check..."
+        HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/health")
+        if [ "$HEALTH_STATUS" != "200" ]; then
+          echo "Health check failed with status: $HEALTH_STATUS"
+          exit 1
+        fi
+        echo "Health check passed"
+
+        # Readiness check
+        echo "Running readiness check..."
+        READY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/ready")
+        if [ "$READY_STATUS" != "200" ]; then
+          echo "Readiness check failed with status: $READY_STATUS"
+          exit 1
+        fi
+        echo "Readiness check passed"
+
+        # Verify all agent endpoints respond
+        for ENDPOINT in erp database webhook normalize auth; do
+          echo "Checking /api/v1/connectors/$ENDPOINT..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/api/v1/connectors/$ENDPOINT/health")
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
+            echo "Endpoint $ENDPOINT failed with status: $STATUS"
+            exit 1
+          fi
+          echo "Endpoint $ENDPOINT: OK"
+        done
+
+        echo "All deployment verifications passed!"
+    waitFor: ['deploy-service']
+
+  # ==========================================================================
+  # STAGE 8: Tag Release (on main branch only)
+  # ==========================================================================
+  - id: 'tag-release'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$BRANCH_NAME" = "main" ]; then
+          gcloud container images add-tag \
+            gcr.io/$PROJECT_ID/llm-connector-hub:$COMMIT_SHA \
+            gcr.io/$PROJECT_ID/llm-connector-hub:stable \
+            --quiet
+          echo "Tagged as stable"
+        fi
+    waitFor: ['verify-deployment']
+
+# ==========================================================================
+# SUBSTITUTIONS (Environment-specific)
+# ==========================================================================
+substitutions:
+  _PLATFORM_ENV: 'dev'
+  _RUVECTOR_SERVICE_URL: 'https://ruvector-service-agentics-dev.a.run.app'
+  _TELEMETRY_ENDPOINT: 'https://llm-observatory-agentics-dev.a.run.app'
+
+# ==========================================================================
+# BUILD OPTIONS
+# ==========================================================================
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+  dynamicSubstitutions: true
+  substitution_option: 'ALLOW_LOOSE'
+
+# ==========================================================================
+# ARTIFACTS
+# ==========================================================================
+artifacts:
+  objects:
+    location: 'gs://agentics-dev-build-artifacts/llm-connector-hub/$BUILD_ID/'
+    paths:
+      - '/workspace/vulnerabilities.txt'
+
+# ==========================================================================
+# TIMEOUT
+# ==========================================================================
+timeout: '1800s'
+
+# ==========================================================================
+# TAGS
+# ==========================================================================
+tags:
+  - 'llm-connector-hub'
+  - 'agentics-dev'
+  - 'cloud-run'

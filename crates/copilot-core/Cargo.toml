@@ -30,5 +30,8 @@ async-trait = { workspace = true }
 # System info
 num_cpus = "1.16"
 
+# Hashing for determinism verification
+sha2 = "0.10"
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

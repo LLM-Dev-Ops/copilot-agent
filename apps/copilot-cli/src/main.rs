@@ -146,6 +146,10 @@ enum Commands {
     #[command(subcommand)]
     Benchmark(BenchmarkCommands),
 
+    /// Invoke Agentics agents (stateless, deterministic)
+    #[command(subcommand)]
+    Agent(commands::agent::AgentCommands),
+
     /// Shorthand: Run all benchmarks (alias for 'benchmark run')
     Run {
         /// Only run benchmarks matching this filter (by ID prefix)
@@ -422,6 +426,9 @@ async fn main() -> ExitCode {
         }
         Commands::Completions { shell } => {
             commands::completions::run(&shell)
+        }
+        Commands::Agent(cmd) => {
+            commands::agent::run(cmd, &cli.format).await
         }
         Commands::Benchmark(cmd) => {
             let benchmark_cmd = match cmd {

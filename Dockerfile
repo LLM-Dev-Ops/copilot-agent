@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for LLM-CoPilot-Agent
 # Stage 1: Chef planner - analyzes dependencies for better caching
-FROM rust:1.80-slim as chef
+FROM rust:latest as chef
 WORKDIR /app
 RUN cargo install cargo-chef --locked
 
@@ -69,5 +69,4 @@ ENV RUST_LOG=info \
     RUST_BACKTRACE=1
 
 # Run the application
-ENTRYPOINT ["/usr/local/bin/copilot-server"]
-CMD ["server"]
+CMD ["/usr/local/bin/copilot-server"]

@@ -1,0 +1,35 @@
+{
+  "name": "@agentics/contracts",
+  "version": "1.0.0",
+  "description": "Agentics Agent Contracts - Canonical schemas for all agents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "agentics",
+    "contracts",
+    "schemas",
+    "decision-event"
+  ],
+  "author": "Agentics",
+  "license": "MIT",
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}
