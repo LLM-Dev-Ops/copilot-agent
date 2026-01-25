@@ -130,3 +130,18 @@ export {
   ConfigValidationOutputSchema,
   type ConfigValidationOutput,
 } from './config-validation-schemas';
+
+// Phase 7: Intelligence Layer (Layer 2)
+export {
+  PHASE7_PERFORMANCE_BUDGETS,
+  HypothesisSignalSchema,
+  type HypothesisSignal,
+  SimulationOutcomeSignalSchema,
+  type SimulationOutcomeSignal,
+  ConfidenceDeltaSignalSchema,
+  type ConfidenceDeltaSignal,
+  IntelligenceLayerInputSchema,
+  type IntelligenceLayerInput,
+  IntelligenceLayerOutputSchema,
+  type IntelligenceLayerOutput,
+} from './intelligence-schemas';

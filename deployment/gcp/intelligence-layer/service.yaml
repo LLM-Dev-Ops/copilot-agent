@@ -1,0 +1,158 @@
+##
+# Intelligence Layer Agent - Phase 7 (Layer 2)
+# Google Cloud Run Service Definition
+#
+# Role Clarity:
+# - Agents MAY: reason, simulate, explore
+# - Agents MUST: emit signals, avoid final decisions
+#
+# Performance Budgets:
+# - MAX_TOKENS=2500
+# - MAX_LATENCY_MS=5000
+#
+# Required Secrets (Google Secret Manager):
+# - RUVECTOR_API_KEY
+# - LLM_OBSERVATORY_API_KEY (optional)
+##
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: intelligence-layer-agent
+  namespace: agentics
+  labels:
+    app: intelligence-layer-agent
+    phase: "7"
+    layer: "2"
+    component: agent
+  annotations:
+    run.googleapis.com/description: "Phase 7 Intelligence Layer Agent - reasoning, simulation, exploration with signal emission"
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+spec:
+  template:
+    metadata:
+      annotations:
+        # Auto-scaling configuration
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "50"
+        autoscaling.knative.dev/target: "80"
+
+        # CPU and startup optimizations
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/execution-environment: gen2
+
+        # VPC connector for internal services (RuVector)
+        run.googleapis.com/vpc-access-connector: projects/agentics-dev/locations/us-central1/connectors/agentics-vpc-connector
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 30  # Aligned with MAX_LATENCY_MS budget (5s) + buffer
+      serviceAccountName: intelligence-layer-sa
+
+      containers:
+        - name: intelligence-layer-agent
+          image: gcr.io/agentics-dev/intelligence-layer-agent:latest
+          ports:
+            - containerPort: 8080
+              name: http1
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+            requests:
+              cpu: "1"
+              memory: 1Gi
+
+          # Environment variables from ConfigMaps
+          env:
+            # Service identification
+            - name: SERVICE_NAME
+              value: intelligence-layer-agent
+            - name: SERVICE_VERSION
+              value: "1.0.0"
+            - name: PHASE
+              value: "7"
+            - name: LAYER
+              value: "2"
+
+            # Platform configuration
+            - name: PLATFORM_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: agentics-platform-config
+                  key: platform_env
+
+            # RuVector persistence (REQUIRED per constitution)
+            - name: RUVECTOR_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: agentics-platform-config
+                  key: ruvector_service_url
+            - name: RUVECTOR_NAMESPACE
+              value: "agents"
+
+            # Telemetry (LLM-Observatory)
+            - name: LLM_OBSERVATORY_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: agentics-platform-config
+                  key: telemetry_endpoint
+            - name: TELEMETRY_ENABLED
+              value: "true"
+
+            # Performance budgets (Phase 7 requirements)
+            - name: MAX_TOKENS
+              value: "2500"
+            - name: MAX_LATENCY_MS
+              value: "5000"
+
+            # Agent configuration
+            - name: AGENT_TIMEOUT_MS
+              value: "30000"
+            - name: MAX_PAYLOAD_SIZE_MB
+              value: "10"
+            - name: ENABLE_REQUEST_LOGGING
+              value: "true"
+
+            # Google Cloud
+            - name: GOOGLE_CLOUD_PROJECT
+              value: agentics-dev
+            - name: GOOGLE_CLOUD_REGION
+              value: us-central1
+
+          # Secrets from Google Secret Manager (--set-secrets)
+          # These are mounted at runtime via Cloud Run secret references
+          # Deploy command: gcloud run deploy ... --set-secrets=RUVECTOR_API_KEY=ruvector-api-key:latest
+
+          # Health checks
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 10
+
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+  traffic:
+    - percent: 100
+      latestRevision: true
