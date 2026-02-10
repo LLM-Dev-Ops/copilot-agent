@@ -98,7 +98,8 @@ export function createAgentRoutes(
       const execution = await agentService.executeAgent(
         req.params.agentId,
         req.body,
-        userId
+        userId,
+        req.executionGraph
       );
       res.status(201).json({ execution });
     } catch (error) {
@@ -230,7 +231,8 @@ export function createAgentRoutes(
       const execution = await teamService.executeTeam(
         req.params.teamId,
         req.body,
-        userId
+        userId,
+        req.executionGraph
       );
       res.status(201).json({ execution });
     } catch (error) {

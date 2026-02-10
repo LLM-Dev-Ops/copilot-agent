@@ -8,8 +8,10 @@
 
 pub mod contracts;
 pub mod decomposer;
+pub mod execution_graph;
 pub mod telemetry;
 
 pub use contracts::*;
 pub use decomposer::*;
+pub use execution_graph::*;
 pub use telemetry::*;

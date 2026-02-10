@@ -15,6 +15,7 @@ import { createModelRoutes } from './routes/models';
 import { createAgentRoutes } from './routes/agents';
 import { createRAGRoutes } from './routes/rag';
 import { createHealthRoutes } from './routes/health';
+import { executionContextMiddleware } from './middleware/executionContext';
 import { ModelService } from './services/modelService';
 import { ABTestService } from './services/abTestService';
 import { FineTuneService } from './services/fineTuneService';
@@ -134,10 +135,12 @@ async function main(): Promise<void> {
   app.use(requestLogger);
 
   // Mount routes
+  // Health routes are NOT execution-tracked
   app.use('/health', createHealthRoutes(db, redis));
-  app.use('/api/v1/models', createModelRoutes(modelService, abTestService, fineTuneService));
-  app.use('/api/v1/agents', createAgentRoutes(agentService, teamService, toolService));
-  app.use('/api/v1/rag', createRAGRoutes(ragService));
+  // API routes use execution context middleware for span tracking
+  app.use('/api/v1/models', executionContextMiddleware, createModelRoutes(modelService, abTestService, fineTuneService));
+  app.use('/api/v1/agents', executionContextMiddleware, createAgentRoutes(agentService, teamService, toolService));
+  app.use('/api/v1/rag', executionContextMiddleware, createRAGRoutes(ragService));
 
   // Root endpoint
   app.get('/', (_req: Request, res: Response) => {

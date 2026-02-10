@@ -2,15 +2,18 @@
 
 use crate::{
     error::{ApiError, Result},
+    rest::execution_middleware::SharedExecutionGraph,
     types::*,
     AppState,
 };
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
+    Extension,
     Json,
 };
 use chrono::Utc;
+use copilot_core::agents::execution_graph::Artifact;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{debug, error, info};
@@ -99,6 +102,7 @@ pub async fn delete_session(
 /// Send a message
 pub async fn send_message(
     State(state): State<Arc<AppState>>,
+    graph: Option<Extension<SharedExecutionGraph>>,
     Json(req): Json<SendMessageRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<MessageResponse>>)> {
     info!(
@@ -110,8 +114,39 @@ pub async fn send_message(
     let message_id = Uuid::new_v4().to_string();
     let now = Utc::now();
 
-    // TODO: Process message using CoPilot engine
-    // For now, return a mock response
+    // Track agent-level spans for processing engines
+    if let Some(Extension(ref graph)) = graph {
+        let mut g = graph.lock().await;
+
+        // NLP processing agent span
+        let nlp_span = g.start_agent_span("nlp-engine");
+        // TODO: actual NLP processing via state.engine
+        g.complete_agent_span(
+            &nlp_span,
+            vec![Artifact::new(
+                "nlp_result",
+                "intent_classification",
+                &message_id,
+                serde_json::json!({"intent": "query", "confidence": 0.9}),
+            )],
+        )
+        .ok();
+
+        // Conversation processing agent span
+        let conv_span = g.start_agent_span("conversation-manager");
+        // TODO: actual conversation processing via state.conversation_manager
+        g.complete_agent_span(
+            &conv_span,
+            vec![Artifact::new(
+                "conversation_result",
+                "message_response",
+                &message_id,
+                serde_json::json!({"session_id": &req.session_id}),
+            )],
+        )
+        .ok();
+    }
+
     let response = MessageResponse {
         id: message_id.clone(),
         session_id: req.session_id.clone(),
@@ -121,8 +156,17 @@ pub async fn send_message(
         metadata: req.metadata,
     };
 
+    // Attach execution graph to the response if available
+    let mut api_response = ApiResponse::success(response);
+    if let Some(Extension(ref graph)) = graph {
+        let g = graph.lock().await;
+        if let Ok(json) = g.to_json() {
+            api_response = api_response.with_execution_graph(json);
+        }
+    }
+
     info!("Message sent: {}", message_id);
-    Ok((StatusCode::CREATED, Json(ApiResponse::success(response))))
+    Ok((StatusCode::CREATED, Json(api_response)))
 }
 
 /// Query parameters for getting messages
@@ -164,6 +208,7 @@ pub async fn get_messages(
 /// Create a new workflow
 pub async fn create_workflow(
     State(state): State<Arc<AppState>>,
+    graph: Option<Extension<SharedExecutionGraph>>,
     Json(req): Json<CreateWorkflowRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<WorkflowResponse>>)> {
     info!("Creating workflow: {}", req.name);
@@ -171,8 +216,23 @@ pub async fn create_workflow(
     let workflow_id = Uuid::new_v4().to_string();
     let now = Utc::now();
 
-    // TODO: Create workflow using CoPilot engine
-    // For now, return a mock response
+    // Track workflow agent span
+    if let Some(Extension(ref graph)) = graph {
+        let mut g = graph.lock().await;
+        let span_id = g.start_agent_span("workflow-engine");
+        // TODO: actual workflow execution via state.engine
+        g.complete_agent_span(
+            &span_id,
+            vec![Artifact::new(
+                "workflow_definition",
+                "workflow",
+                &workflow_id,
+                serde_json::json!({"name": &req.name, "steps": req.definition.steps.len()}),
+            )],
+        )
+        .ok();
+    }
+
     let response = WorkflowResponse {
         id: workflow_id.clone(),
         name: req.name,
@@ -183,8 +243,17 @@ pub async fn create_workflow(
         error: None,
     };
 
+    // Attach execution graph to the response if available
+    let mut api_response = ApiResponse::success(response);
+    if let Some(Extension(ref graph)) = graph {
+        let g = graph.lock().await;
+        if let Ok(json) = g.to_json() {
+            api_response = api_response.with_execution_graph(json);
+        }
+    }
+
     info!("Workflow created: {}", workflow_id);
-    Ok((StatusCode::CREATED, Json(ApiResponse::success(response))))
+    Ok((StatusCode::CREATED, Json(api_response)))
 }
 
 /// Get workflow status

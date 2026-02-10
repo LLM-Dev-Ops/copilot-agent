@@ -2,6 +2,7 @@
 //!
 //! Provides REST API endpoints for the CoPilot service.
 
+pub mod execution_middleware;
 pub mod handlers;
 pub mod middleware;
 pub mod router;

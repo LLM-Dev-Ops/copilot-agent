@@ -16,6 +16,7 @@ import { ContentFilterService } from './services/contentFilterService';
 import { PolicyService } from './services/policyService';
 import { AuditService } from './services/auditService';
 import { DataLineageService } from './services/dataLineageService';
+import { executionContextMiddleware } from '../../ai-platform/src/middleware/executionContext';
 
 // Configuration
 const config = {
@@ -186,8 +187,8 @@ async function main(): Promise<void> {
     });
   });
 
-  // Mount routes
-  app.use('/api/v1/governance', createGovernanceRoutes(
+  // Mount routes with execution context middleware for span tracking
+  app.use('/api/v1/governance', executionContextMiddleware, createGovernanceRoutes(
     contentFilterService,
     policyService,
     auditService,

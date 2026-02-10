@@ -170,6 +170,9 @@ pub struct ApiResponse<T> {
     /// Error message
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Execution graph (present when execution tracking is active)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_graph: Option<serde_json::Value>,
 }
 
 impl<T> ApiResponse<T> {
@@ -179,6 +182,7 @@ impl<T> ApiResponse<T> {
             success: true,
             data: Some(data),
             error: None,
+            execution_graph: None,
         }
     }
 
@@ -188,7 +192,14 @@ impl<T> ApiResponse<T> {
             success: false,
             data: None,
             error: Some(error),
+            execution_graph: None,
         }
+    }
+
+    /// Attach an execution graph to the response
+    pub fn with_execution_graph(mut self, graph: serde_json::Value) -> Self {
+        self.execution_graph = Some(graph);
+        self
     }
 }
 

@@ -16,6 +16,7 @@ import { createDataResidencyRoutes } from './routes/dataResidency';
 import { ComplianceService } from './services/complianceService';
 import { HIPAAService } from './services/hipaaService';
 import { DataResidencyService } from './services/dataResidencyService';
+import { executionContextMiddleware } from '../../ai-platform/src/middleware/executionContext';
 
 // Configuration
 const config = {
@@ -178,10 +179,10 @@ async function main(): Promise<void> {
     });
   });
 
-  // Mount routes
-  app.use('/api/v1/compliance', createComplianceRoutes(complianceService));
-  app.use('/api/v1/hipaa', createHIPAARoutes(hipaaService));
-  app.use('/api/v1/data-residency', createDataResidencyRoutes(dataResidencyService));
+  // Mount routes with execution context middleware for span tracking
+  app.use('/api/v1/compliance', executionContextMiddleware, createComplianceRoutes(complianceService));
+  app.use('/api/v1/hipaa', executionContextMiddleware, createHIPAARoutes(hipaaService));
+  app.use('/api/v1/data-residency', executionContextMiddleware, createDataResidencyRoutes(dataResidencyService));
 
   // Root endpoint
   app.get('/', (_req: Request, res: Response) => {

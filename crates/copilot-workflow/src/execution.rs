@@ -3,10 +3,11 @@
 use crate::step::{StepAction, StepResult, StepState, WorkflowStep};
 use crate::{Result, WorkflowError};
 use async_trait::async_trait;
+use copilot_core::agents::execution_graph::{Artifact, ExecutionGraph};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::{timeout, Duration};
 
 /// Configuration for retry behavior
@@ -55,6 +56,8 @@ pub struct ExecutionContext {
     state: Arc<RwLock<HashMap<String, serde_json::Value>>>,
     /// Step outputs
     outputs: Arc<RwLock<HashMap<String, HashMap<String, serde_json::Value>>>>,
+    /// Execution graph for Agentics span tracking (optional)
+    pub execution_graph: Option<Arc<Mutex<ExecutionGraph>>>,
 }
 
 impl ExecutionContext {
@@ -65,7 +68,17 @@ impl ExecutionContext {
             execution_id: execution_id.into(),
             state: Arc::new(RwLock::new(HashMap::new())),
             outputs: Arc::new(RwLock::new(HashMap::new())),
+            execution_graph: None,
         }
+    }
+
+    /// Create a new execution context with an execution graph for span tracking
+    pub fn with_execution_graph(
+        mut self,
+        graph: Arc<Mutex<ExecutionGraph>>,
+    ) -> Self {
+        self.execution_graph = Some(graph);
+        self
     }
 
     /// Get a value from the shared state
@@ -339,15 +352,48 @@ impl DefaultStepExecutor {
         &self,
         agent_id: &str,
         parameters: &HashMap<String, serde_json::Value>,
-        _context: &ExecutionContext,
+        context: &ExecutionContext,
     ) -> Result<HashMap<String, serde_json::Value>> {
         tracing::info!(agent_id, "Invoking agent");
 
-        // Mock implementation
-        let mut outputs = HashMap::new();
-        outputs.insert("agent_response".to_string(), serde_json::json!({}));
+        // Start an agent-level execution span if graph is available
+        let span_id = if let Some(ref graph) = context.execution_graph {
+            let mut g = graph.lock().await;
+            Some(g.start_agent_span(agent_id))
+        } else {
+            None
+        };
 
-        Ok(outputs)
+        // Mock implementation - in production this would delegate to the actual agent
+        let result: Result<HashMap<String, serde_json::Value>> = Ok({
+            let mut outputs = HashMap::new();
+            outputs.insert("agent_response".to_string(), serde_json::json!({}));
+            outputs
+        });
+
+        // Complete or fail the agent span
+        if let (Some(ref graph), Some(ref sid)) = (&context.execution_graph, &span_id) {
+            let mut g = graph.lock().await;
+            match &result {
+                Ok(outputs) => {
+                    g.complete_agent_span(
+                        sid,
+                        vec![Artifact::new(
+                            "agent_output",
+                            "agent_invoke_result",
+                            agent_id,
+                            serde_json::to_value(outputs).unwrap_or_default(),
+                        )],
+                    )
+                    .ok();
+                }
+                Err(e) => {
+                    g.fail_agent_span(sid, e.to_string()).ok();
+                }
+            }
+        }
+
+        result
     }
 
     async fn execute_condition(

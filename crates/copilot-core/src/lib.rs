@@ -35,4 +35,8 @@ pub use agents::{
         AgentMetrics, OTelSpan, SpanKind, SpanStatus, StatusCode, TelemetryContext,
         TelemetryEvent, TelemetryEventType,
     },
+    execution_graph::{
+        Artifact, ExecutionGraph, ExecutionGraphError, ExecutionSpan, ExecutionStatus,
+        SpanType, REPO_NAME,
+    },
 };

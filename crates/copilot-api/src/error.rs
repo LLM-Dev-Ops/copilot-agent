@@ -46,6 +46,9 @@ pub enum ApiError {
 
     #[error("Workflow error: {0}")]
     WorkflowError(String),
+
+    #[error("Execution context error: {0}")]
+    ExecutionContextError(String),
 }
 
 impl ApiError {
@@ -63,6 +66,7 @@ impl ApiError {
             ApiError::GrpcError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::ConversationError(_) => StatusCode::BAD_REQUEST,
             ApiError::WorkflowError(_) => StatusCode::BAD_REQUEST,
+            ApiError::ExecutionContextError(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }
 
@@ -80,6 +84,7 @@ impl ApiError {
             ApiError::GrpcError(_) => "GRPC_ERROR",
             ApiError::ConversationError(_) => "CONVERSATION_ERROR",
             ApiError::WorkflowError(_) => "WORKFLOW_ERROR",
+            ApiError::ExecutionContextError(_) => "EXECUTION_CONTEXT_ERROR",
         }
     }
 }

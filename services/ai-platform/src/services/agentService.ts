@@ -16,6 +16,7 @@ import {
   ExecuteAgentInput,
   ToolCall,
 } from '../models/agent';
+import { ExecutionGraphBuilder, Artifact } from '../../../agents/contracts/execution-graph';
 
 export class AgentService {
   private db: Pool;
@@ -237,7 +238,8 @@ export class AgentService {
   async executeAgent(
     agentId: string,
     input: ExecuteAgentInput,
-    userId: string
+    userId: string,
+    executionGraph?: ExecutionGraphBuilder
   ): Promise<AgentExecution> {
     const agent = await this.getAgent(agentId);
     if (!agent) {
@@ -277,9 +279,31 @@ export class AgentService {
     // Track active execution
     await this.redis.incr(`${this.cachePrefix}active:${agentId}`);
 
+    // Start an agent-level execution span if graph is provided
+    const spanId = executionGraph?.startAgentSpan(agent.name || agentId);
+
     try {
       // Execute the agent loop
       const result = await this.runAgentLoop(agent, execution, input);
+
+      // Complete the agent span with execution artifacts
+      if (executionGraph && spanId) {
+        const artifacts: Artifact[] = [
+          {
+            name: 'agent_execution',
+            artifact_type: 'agent_execution_result',
+            reference: execution.id,
+            data: {
+              execution_id: execution.id,
+              agent_id: agentId,
+              status: result.status,
+              metrics: result.metrics,
+            },
+          },
+        ];
+        executionGraph.completeAgentSpan(spanId, artifacts);
+      }
+
       return result;
     } catch (error) {
       // Handle execution error
@@ -290,6 +314,11 @@ export class AgentService {
         message: errorMessage,
       };
       execution.completedAt = new Date();
+
+      // Fail the agent span
+      if (executionGraph && spanId) {
+        executionGraph.failAgentSpan(spanId, errorMessage);
+      }
 
       await this.db.query(
         `UPDATE agent_executions SET

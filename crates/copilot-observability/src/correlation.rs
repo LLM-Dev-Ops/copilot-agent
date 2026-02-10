@@ -19,6 +19,8 @@ pub struct CorrelationContext {
     pub span_id: String,
     /// Parent span ID
     pub parent_span_id: Option<String>,
+    /// Execution ID (for Agentics ExecutionGraph integration)
+    pub execution_id: Option<String>,
     /// Tenant ID (for multi-tenant)
     pub tenant_id: Option<String>,
     /// User ID
@@ -46,6 +48,7 @@ impl CorrelationContext {
             trace_id: trace_id.clone(),
             span_id: Self::generate_span_id(),
             parent_span_id: None,
+            execution_id: None,
             tenant_id: None,
             user_id: None,
             session_id: None,
@@ -74,6 +77,8 @@ impl CorrelationContext {
                     ctx.trace_id = value.clone();
                 }
                 "x-span-id" => ctx.parent_span_id = Some(value.clone()),
+                "x-parent-span-id" => ctx.parent_span_id = Some(value.clone()),
+                "x-execution-id" => ctx.execution_id = Some(value.clone()),
                 "x-tenant-id" => ctx.tenant_id = Some(value.clone()),
                 "x-user-id" => ctx.user_id = Some(value.clone()),
                 "x-session-id" => ctx.session_id = Some(value.clone()),
@@ -100,12 +105,19 @@ impl CorrelationContext {
             trace_id: self.trace_id.clone(),
             span_id: Self::generate_span_id(),
             parent_span_id: Some(self.span_id.clone()),
+            execution_id: self.execution_id.clone(),
             tenant_id: self.tenant_id.clone(),
             user_id: self.user_id.clone(),
             session_id: self.session_id.clone(),
             timestamp: Utc::now(),
             baggage: self.baggage.clone(),
         }
+    }
+
+    /// Set execution ID (for Agentics ExecutionGraph integration)
+    pub fn with_execution_id(mut self, execution_id: &str) -> Self {
+        self.execution_id = Some(execution_id.to_string());
+        self
     }
 
     /// Set tenant ID
@@ -141,6 +153,13 @@ impl CorrelationContext {
                 format!("00-{}-{}-01", self.trace_id, self.span_id),
             ),
         ];
+
+        if let Some(ref execution_id) = self.execution_id {
+            headers.push(("X-Execution-Id".to_string(), execution_id.clone()));
+        }
+
+        // Propagate current span_id as parent for downstream services
+        headers.push(("X-Parent-Span-Id".to_string(), self.span_id.clone()));
 
         if let Some(ref tenant_id) = self.tenant_id {
             headers.push(("X-Tenant-ID".to_string(), tenant_id.clone()));
