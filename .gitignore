@@ -57,6 +57,9 @@ temp/
 .swarm/
 CLAUDE.md
 
+# Build output
+dist/
+
 # Google Cloud SDK (local install)
 google-cloud-sdk/
 google-cloud-cli-*.tar.gz
