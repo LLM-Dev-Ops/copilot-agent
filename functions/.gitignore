@@ -1,3 +1,2 @@
-# Override parent .gitignore - dist/ MUST be deployed
-!dist/
-!dist/**
+# Only ignore node_modules - everything else must be deployed
+node_modules/
