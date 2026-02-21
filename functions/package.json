@@ -5,6 +5,7 @@
   "main": "dist/functions/src/index.js",
   "scripts": {
     "build": "tsc",
+    "gcp-build": "",
     "start": "node dist/functions/src/index.js",
     "dev": "ts-node src/index.ts",
     "test": "jest --config jest.config.js",

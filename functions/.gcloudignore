@@ -1,0 +1,18 @@
+# Source (pre-built JS in dist/ is deployed instead)
+src/
+tsconfig.json
+jest.config.js
+
+# Dev dependencies and artifacts
+node_modules/
+*.test.ts
+*.spec.ts
+*.ts.map
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git
+.gitignore

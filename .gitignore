@@ -57,8 +57,9 @@ temp/
 .swarm/
 CLAUDE.md
 
-# Build output
+# Build output (except functions/dist which is deployed to GCF)
 dist/
+!functions/dist/
 
 # Google Cloud SDK (local install)
 google-cloud-sdk/
