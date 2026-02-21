@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules/
+
+# Rust (not needed for Cloud Function)
+target/
+crates/
+Cargo.toml
+Cargo.lock
+Dockerfile
+docker-compose.yml
+Makefile
+
+# Apps (Rust server, not needed)
+apps/
+
+# Deploy configs (not needed in function bundle)
+deploy/
+deployment/
+
+# Documentation
+docs/
+plans/
+*.md
+
+# Tests
+**/*.test.ts
+**/*.spec.ts
+tests/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.*
+
+# Build artifacts
+dist/
+**/*.js.map
+
+# Intelligence layer (not in scope for 7-agent CF)
+services/agents/intelligence-layer/

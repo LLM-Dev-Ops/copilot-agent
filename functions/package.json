@@ -1,0 +1,38 @@
+{
+  "name": "copilot-agents",
+  "version": "1.0.0",
+  "description": "Cloud Function entry point for all 7 copilot agents",
+  "main": "dist/functions/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/functions/src/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest --config jest.config.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "predeploy": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "agentics",
+    "cloud-function",
+    "copilot-agents"
+  ],
+  "author": "Agentics",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^9.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "ts-jest": "^29.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

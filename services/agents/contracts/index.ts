@@ -131,6 +131,16 @@ export {
   type ConfigValidationOutput,
 } from './config-validation-schemas';
 
+// Decomposer Agent
+export {
+  SubObjectiveSchema,
+  type SubObjective,
+  DecomposerInputSchema,
+  type DecomposerInput,
+  DecomposerOutputSchema,
+  type DecomposerOutput,
+} from './decomposer-schemas';
+
 // Phase 7: Intelligence Layer (Layer 2)
 export {
   PHASE7_PERFORMANCE_BUDGETS,
