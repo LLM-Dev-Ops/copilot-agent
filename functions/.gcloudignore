@@ -1,3 +1,7 @@
+# Force include pre-built dist
+!dist/
+!dist/**
+
 # Source (pre-built JS in dist/ is deployed instead)
 src/
 tsconfig.json
