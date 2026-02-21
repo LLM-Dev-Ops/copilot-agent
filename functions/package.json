@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "gcp-build": "",
-    "start": "node dist/functions/src/index.js",
+    "start": "functions-framework --target=handler --source=.",
     "dev": "ts-node src/index.ts",
     "test": "jest --config jest.config.js",
     "typecheck": "tsc --noEmit",
