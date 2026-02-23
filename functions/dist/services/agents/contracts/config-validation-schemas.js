@@ -22,6 +22,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfigValidationOutputSchema = exports.ConfigValidationInputSchema = exports.ReadinessAssessmentSchema = exports.MissingConfigSchema = exports.ConfigConflictSchema = exports.UnsafeConfigSchema = exports.DeprecatedValueSchema = exports.SemanticConstraintSchema = exports.SchemaValidationResultSchema = exports.ValidationFindingSchema = exports.ValidationCategory = exports.ValidationSeverity = void 0;
 const zod_1 = require("zod");
+const pipeline_schemas_1 = require("./pipeline-schemas");
 /**
  * Severity levels for validation findings
  */
@@ -256,6 +257,8 @@ exports.ConfigValidationInputSchema = zod_1.z.object({
     }).optional(),
     /** Request ID for tracing */
     request_id: zod_1.z.string().uuid().optional(),
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: pipeline_schemas_1.PipelineContextSchema.optional(),
 });
 /**
  * Config Validation Agent Output Schema

@@ -60,6 +60,7 @@ export declare const ExecutionSpanSchema: z.ZodObject<{
     attributes: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     status: "completed" | "running" | "failed";
+    trace_id: string;
     artifacts: {
         name: string;
         artifact_type: string;
@@ -68,8 +69,7 @@ export declare const ExecutionSpanSchema: z.ZodObject<{
     }[];
     span_id: string;
     parent_span_id: string;
-    trace_id: string;
-    span_type: "core" | "repo" | "agent";
+    span_type: "agent" | "core" | "repo";
     start_time: string;
     attributes: Record<string, string>;
     repo_name?: string | undefined;
@@ -78,10 +78,10 @@ export declare const ExecutionSpanSchema: z.ZodObject<{
     failure_reason?: string | undefined;
 }, {
     status: "completed" | "running" | "failed";
+    trace_id: string;
     span_id: string;
     parent_span_id: string;
-    trace_id: string;
-    span_type: "core" | "repo" | "agent";
+    span_type: "agent" | "core" | "repo";
     start_time: string;
     artifacts?: {
         name: string;
@@ -129,6 +129,7 @@ export declare const ExecutionGraphSchema: z.ZodObject<{
         attributes: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodString>>;
     }, "strip", z.ZodTypeAny, {
         status: "completed" | "running" | "failed";
+        trace_id: string;
         artifacts: {
             name: string;
             artifact_type: string;
@@ -137,8 +138,7 @@ export declare const ExecutionGraphSchema: z.ZodObject<{
         }[];
         span_id: string;
         parent_span_id: string;
-        trace_id: string;
-        span_type: "core" | "repo" | "agent";
+        span_type: "agent" | "core" | "repo";
         start_time: string;
         attributes: Record<string, string>;
         repo_name?: string | undefined;
@@ -147,10 +147,10 @@ export declare const ExecutionGraphSchema: z.ZodObject<{
         failure_reason?: string | undefined;
     }, {
         status: "completed" | "running" | "failed";
+        trace_id: string;
         span_id: string;
         parent_span_id: string;
-        trace_id: string;
-        span_type: "core" | "repo" | "agent";
+        span_type: "agent" | "core" | "repo";
         start_time: string;
         artifacts?: {
             name: string;
@@ -167,6 +167,7 @@ export declare const ExecutionGraphSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     spans: {
         status: "completed" | "running" | "failed";
+        trace_id: string;
         artifacts: {
             name: string;
             artifact_type: string;
@@ -175,8 +176,7 @@ export declare const ExecutionGraphSchema: z.ZodObject<{
         }[];
         span_id: string;
         parent_span_id: string;
-        trace_id: string;
-        span_type: "core" | "repo" | "agent";
+        span_type: "agent" | "core" | "repo";
         start_time: string;
         attributes: Record<string, string>;
         repo_name?: string | undefined;
@@ -189,10 +189,10 @@ export declare const ExecutionGraphSchema: z.ZodObject<{
 }, {
     spans: {
         status: "completed" | "running" | "failed";
+        trace_id: string;
         span_id: string;
         parent_span_id: string;
-        trace_id: string;
-        span_type: "core" | "repo" | "agent";
+        span_type: "agent" | "core" | "repo";
         start_time: string;
         artifacts?: {
             name: string;

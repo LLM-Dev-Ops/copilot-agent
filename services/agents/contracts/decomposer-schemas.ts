@@ -18,6 +18,7 @@
  */
 
 import { z } from 'zod';
+import { PipelineContextSchema } from './pipeline-schemas';
 
 /**
  * A single sub-objective produced by decomposition
@@ -88,6 +89,9 @@ export const DecomposerInputSchema = z.object({
 
   /** Request ID for tracing */
   request_id: z.string().uuid().optional(),
+
+  /** Optional pipeline context for multi-agent orchestration */
+  pipeline_context: PipelineContextSchema.optional(),
 });
 
 export type DecomposerInput = z.infer<typeof DecomposerInputSchema>;

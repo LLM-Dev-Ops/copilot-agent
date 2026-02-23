@@ -94,7 +94,7 @@ export declare const MissingConstraintSchema: z.ZodObject<{
     id: string;
     description: string;
     severity: "low" | "medium" | "high" | "critical";
-    category: "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "compliance" | "technical";
+    category: "compliance" | "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "technical";
     impact: string;
     clarification_prompt: string;
     default_assumption?: string | undefined;
@@ -102,7 +102,7 @@ export declare const MissingConstraintSchema: z.ZodObject<{
     id: string;
     description: string;
     severity: "low" | "medium" | "high" | "critical";
-    category: "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "compliance" | "technical";
+    category: "compliance" | "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "technical";
     impact: string;
     clarification_prompt: string;
     default_assumption?: string | undefined;
@@ -206,8 +206,71 @@ export declare const ObjectiveClarifierInputSchema: z.ZodObject<{
     }>>;
     /** Request ID for tracing */
     request_id: z.ZodOptional<z.ZodString>;
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: z.ZodOptional<z.ZodObject<{
+        plan_id: z.ZodString;
+        step_id: z.ZodString;
+        previous_steps: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            step_id: z.ZodString;
+            domain: z.ZodString;
+            agent: z.ZodString;
+            output: z.ZodOptional<z.ZodUnknown>;
+        }, "strip", z.ZodTypeAny, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }>, "many">>;
+        execution_metadata: z.ZodOptional<z.ZodObject<{
+            trace_id: z.ZodString;
+            initiated_by: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            trace_id: string;
+            initiated_by: string;
+        }, {
+            trace_id: string;
+            initiated_by: string;
+        }>>;
+    }, "strip", z.ZodTypeAny, {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }, {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }>>;
 }, "strip", z.ZodTypeAny, {
     objective: string;
+    config?: {
+        min_severity?: "low" | "medium" | "high" | "critical" | undefined;
+        max_questions?: number | undefined;
+        auto_resolve_low_severity?: boolean | undefined;
+        interpretation_style?: "conservative" | "balanced" | "liberal" | undefined;
+    } | undefined;
     context?: {
         domain?: string | undefined;
         stakeholders?: string[] | undefined;
@@ -216,14 +279,28 @@ export declare const ObjectiveClarifierInputSchema: z.ZodObject<{
         priorities?: string[] | undefined;
     } | undefined;
     request_id?: string | undefined;
-    config?: {
-        min_severity?: "low" | "medium" | "high" | "critical" | undefined;
-        max_questions?: number | undefined;
-        auto_resolve_low_severity?: boolean | undefined;
-        interpretation_style?: "conservative" | "balanced" | "liberal" | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
     } | undefined;
 }, {
     objective: string;
+    config?: {
+        min_severity?: "low" | "medium" | "high" | "critical" | undefined;
+        max_questions?: number | undefined;
+        auto_resolve_low_severity?: boolean | undefined;
+        interpretation_style?: "conservative" | "balanced" | "liberal" | undefined;
+    } | undefined;
     context?: {
         domain?: string | undefined;
         stakeholders?: string[] | undefined;
@@ -232,11 +309,19 @@ export declare const ObjectiveClarifierInputSchema: z.ZodObject<{
         priorities?: string[] | undefined;
     } | undefined;
     request_id?: string | undefined;
-    config?: {
-        min_severity?: "low" | "medium" | "high" | "critical" | undefined;
-        max_questions?: number | undefined;
-        auto_resolve_low_severity?: boolean | undefined;
-        interpretation_style?: "conservative" | "balanced" | "liberal" | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
     } | undefined;
 }>;
 export type ObjectiveClarifierInput = z.infer<typeof ObjectiveClarifierInputSchema>;
@@ -323,7 +408,7 @@ export declare const ObjectiveClarifierOutputSchema: z.ZodObject<{
         id: string;
         description: string;
         severity: "low" | "medium" | "high" | "critical";
-        category: "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "compliance" | "technical";
+        category: "compliance" | "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "technical";
         impact: string;
         clarification_prompt: string;
         default_assumption?: string | undefined;
@@ -331,7 +416,7 @@ export declare const ObjectiveClarifierOutputSchema: z.ZodObject<{
         id: string;
         description: string;
         severity: "low" | "medium" | "high" | "critical";
-        category: "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "compliance" | "technical";
+        category: "compliance" | "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "technical";
         impact: string;
         clarification_prompt: string;
         default_assumption?: string | undefined;
@@ -481,7 +566,7 @@ export declare const ObjectiveClarifierOutputSchema: z.ZodObject<{
         id: string;
         description: string;
         severity: "low" | "medium" | "high" | "critical";
-        category: "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "compliance" | "technical";
+        category: "compliance" | "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "technical";
         impact: string;
         clarification_prompt: string;
         default_assumption?: string | undefined;
@@ -546,7 +631,7 @@ export declare const ObjectiveClarifierOutputSchema: z.ZodObject<{
         id: string;
         description: string;
         severity: "low" | "medium" | "high" | "critical";
-        category: "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "compliance" | "technical";
+        category: "compliance" | "resource" | "performance" | "dependency" | "quality" | "temporal" | "scope" | "technical";
         impact: string;
         clarification_prompt: string;
         default_assumption?: string | undefined;

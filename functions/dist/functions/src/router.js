@@ -19,6 +19,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.routeRequest = routeRequest;
 const uuid_1 = require("uuid");
+const contracts_1 = require("../../services/agents/contracts");
 // Agent imports
 const planner_1 = require("../../services/agents/planner");
 const config_validation_1 = require("../../services/agents/config-validation");
@@ -86,7 +87,7 @@ function createAgent(slug) {
  *
  * @param slug - The agent slug from the URL path
  * @param body - The parsed JSON request body
- * @returns The agent result (success or error)
+ * @returns RouteResult with agent result and metadata
  * @throws If the slug is unknown
  */
 async function routeRequest(slug, body) {
@@ -99,9 +100,22 @@ async function routeRequest(slug, body) {
     const executionRef = (typeof bodyObj.execution_ref === 'string' && bodyObj.execution_ref)
         ? bodyObj.execution_ref
         : (0, uuid_1.v4)();
+    // Extract pipeline_context if present (safe parse — don't fail if malformed)
+    let pipelineContext;
+    if (bodyObj.pipeline_context !== undefined) {
+        const parsed = contracts_1.PipelineContextSchema.safeParse(bodyObj.pipeline_context);
+        if (parsed.success) {
+            pipelineContext = parsed.data;
+        }
+    }
     // Validate input through the agent's schema
     const validatedInput = agent.validateInput(body);
     // Invoke the agent
-    return agent.invoke(validatedInput, executionRef);
+    const agentResult = await agent.invoke(validatedInput, executionRef);
+    return {
+        agentResult,
+        agentSlug: slug,
+        pipelineContext,
+    };
 }
 //# sourceMappingURL=router.js.map

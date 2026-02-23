@@ -426,13 +426,13 @@ export declare const IntelligenceLayerInputSchema: z.ZodObject<{
         constraints: z.ZodArray<z.ZodString, "many">;
         context: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     }, "strip", z.ZodTypeAny, {
-        constraints: string[];
         domain: string;
+        constraints: string[];
         statement: string;
         context?: Record<string, unknown> | undefined;
     }, {
-        constraints: string[];
         domain: string;
+        constraints: string[];
         statement: string;
         context?: Record<string, unknown> | undefined;
     }>;
@@ -821,8 +821,8 @@ export declare const IntelligenceLayerInputSchema: z.ZodObject<{
     reasoning_chain_id: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     objective: {
-        constraints: string[];
         domain: string;
+        constraints: string[];
         statement: string;
         context?: Record<string, unknown> | undefined;
     };
@@ -915,8 +915,8 @@ export declare const IntelligenceLayerInputSchema: z.ZodObject<{
     reasoning_chain_id?: string | undefined;
 }, {
     objective: {
-        constraints: string[];
         domain: string;
+        constraints: string[];
         statement: string;
         context?: Record<string, unknown> | undefined;
     };

@@ -141,6 +141,21 @@ export {
   type DecomposerOutput,
 } from './decomposer-schemas';
 
+// Pipeline Orchestration
+export {
+  DOMAIN_REGISTRY,
+  DOMAIN_NAMES,
+  type DomainName,
+  PipelineStepSchema,
+  type PipelineStep,
+  PipelineSpecSchema,
+  type PipelineSpec,
+  PipelineStepRefSchema,
+  type PipelineStepRef,
+  PipelineContextSchema,
+  type PipelineContext,
+} from './pipeline-schemas';
+
 // Phase 7: Intelligence Layer (Layer 2)
 export {
   PHASE7_PERFORMANCE_BUDGETS,

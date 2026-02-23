@@ -20,6 +20,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DecomposerOutputSchema = exports.DecomposerInputSchema = exports.SubObjectiveSchema = void 0;
 const zod_1 = require("zod");
+const pipeline_schemas_1 = require("./pipeline-schemas");
 /**
  * A single sub-objective produced by decomposition
  */
@@ -74,6 +75,8 @@ exports.DecomposerInputSchema = zod_1.z.object({
     }).optional(),
     /** Request ID for tracing */
     request_id: zod_1.z.string().uuid().optional(),
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: pipeline_schemas_1.PipelineContextSchema.optional(),
 });
 /**
  * Decomposer Agent Output Schema

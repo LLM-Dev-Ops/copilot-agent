@@ -155,6 +155,63 @@ export declare const MetaReasonerInputSchema: z.ZodObject<{
     }>>;
     /** Request identifier for tracing */
     request_id: z.ZodOptional<z.ZodString>;
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: z.ZodOptional<z.ZodObject<{
+        plan_id: z.ZodString;
+        step_id: z.ZodString;
+        previous_steps: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            step_id: z.ZodString;
+            domain: z.ZodString;
+            agent: z.ZodString;
+            output: z.ZodOptional<z.ZodUnknown>;
+        }, "strip", z.ZodTypeAny, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }>, "many">>;
+        execution_metadata: z.ZodOptional<z.ZodObject<{
+            trace_id: z.ZodString;
+            initiated_by: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            trace_id: string;
+            initiated_by: string;
+        }, {
+            trace_id: string;
+            initiated_by: string;
+        }>>;
+    }, "strip", z.ZodTypeAny, {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }, {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }>>;
 }, "strip", z.ZodTypeAny, {
     traces: {
         agent_id: string;
@@ -181,6 +238,20 @@ export declare const MetaReasonerInputSchema: z.ZodObject<{
         historical_accuracy?: Record<string, number> | undefined;
     } | undefined;
     request_id?: string | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    } | undefined;
 }, {
     traces: {
         agent_id: string;
@@ -200,6 +271,20 @@ export declare const MetaReasonerInputSchema: z.ZodObject<{
         correlation_groups?: string[][] | undefined;
     } | undefined;
     request_id?: string | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    } | undefined;
     scope?: {
         detect_contradictions?: boolean | undefined;
         assess_confidence_calibration?: boolean | undefined;

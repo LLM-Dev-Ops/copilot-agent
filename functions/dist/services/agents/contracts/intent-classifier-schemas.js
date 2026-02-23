@@ -19,6 +19,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IntentClassifierOutputSchema = exports.IntentClassifierInputSchema = exports.MultiIntentStateSchema = exports.ClassifiedIntentSchema = exports.IntentSignalSchema = exports.IntentType = void 0;
 const zod_1 = require("zod");
+const pipeline_schemas_1 = require("./pipeline-schemas");
 /**
  * Intent Type enum - categories of user/system intent
  */
@@ -169,6 +170,8 @@ exports.IntentClassifierInputSchema = zod_1.z.object({
     }).optional(),
     /** Request ID for tracing */
     request_id: zod_1.z.string().uuid().optional(),
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: pipeline_schemas_1.PipelineContextSchema.optional(),
 });
 /**
  * Intent Classifier Output Schema

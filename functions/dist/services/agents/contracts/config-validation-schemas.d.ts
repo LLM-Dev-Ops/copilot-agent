@@ -73,7 +73,7 @@ export declare const ValidationFindingSchema: z.ZodObject<{
     message: string;
     tags: string[];
     severity: "error" | "critical" | "info" | "warning";
-    category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+    category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
     finding_id: string;
     related_paths: string[];
     expected?: string | undefined;
@@ -83,7 +83,7 @@ export declare const ValidationFindingSchema: z.ZodObject<{
     path: string;
     message: string;
     severity: "error" | "critical" | "info" | "warning";
-    category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+    category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
     finding_id: string;
     expected?: string | undefined;
     tags?: string[] | undefined;
@@ -129,7 +129,7 @@ export declare const SchemaValidationResultSchema: z.ZodObject<{
         message: string;
         tags: string[];
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         related_paths: string[];
         expected?: string | undefined;
@@ -139,7 +139,7 @@ export declare const SchemaValidationResultSchema: z.ZodObject<{
         path: string;
         message: string;
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         expected?: string | undefined;
         tags?: string[] | undefined;
@@ -154,7 +154,7 @@ export declare const SchemaValidationResultSchema: z.ZodObject<{
         message: string;
         tags: string[];
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         related_paths: string[];
         expected?: string | undefined;
@@ -169,7 +169,7 @@ export declare const SchemaValidationResultSchema: z.ZodObject<{
         path: string;
         message: string;
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         expected?: string | undefined;
         tags?: string[] | undefined;
@@ -462,6 +462,63 @@ export declare const ConfigValidationInputSchema: z.ZodObject<{
     }>>;
     /** Request ID for tracing */
     request_id: z.ZodOptional<z.ZodString>;
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: z.ZodOptional<z.ZodObject<{
+        plan_id: z.ZodString;
+        step_id: z.ZodString;
+        previous_steps: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            step_id: z.ZodString;
+            domain: z.ZodString;
+            agent: z.ZodString;
+            output: z.ZodOptional<z.ZodUnknown>;
+        }, "strip", z.ZodTypeAny, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }>, "many">>;
+        execution_metadata: z.ZodOptional<z.ZodObject<{
+            trace_id: z.ZodString;
+            initiated_by: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            trace_id: string;
+            initiated_by: string;
+        }, {
+            trace_id: string;
+            initiated_by: string;
+        }>>;
+    }, "strip", z.ZodTypeAny, {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }, {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }>>;
 }, "strip", z.ZodTypeAny, {
     config: Record<string, unknown>;
     format: "unknown" | "json" | "yaml" | "toml" | "env";
@@ -472,6 +529,11 @@ export declare const ConfigValidationInputSchema: z.ZodObject<{
         check_conflicts: boolean;
         check_missing: boolean;
     } | undefined;
+    schema?: {
+        format?: "custom" | "json-schema" | "zod" | "yup" | "joi" | undefined;
+        content?: unknown;
+        uri?: string | undefined;
+    } | undefined;
     context?: {
         version?: string | undefined;
         constraints?: {
@@ -484,10 +546,19 @@ export declare const ConfigValidationInputSchema: z.ZodObject<{
         deprecated_keys?: string[] | undefined;
     } | undefined;
     request_id?: string | undefined;
-    schema?: {
-        format?: "custom" | "json-schema" | "zod" | "yup" | "joi" | undefined;
-        content?: unknown;
-        uri?: string | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
     } | undefined;
 }, {
     config: Record<string, unknown>;
@@ -498,6 +569,12 @@ export declare const ConfigValidationInputSchema: z.ZodObject<{
         check_conflicts?: boolean | undefined;
         check_missing?: boolean | undefined;
     } | undefined;
+    schema?: {
+        format?: "custom" | "json-schema" | "zod" | "yup" | "joi" | undefined;
+        content?: unknown;
+        uri?: string | undefined;
+    } | undefined;
+    format?: "unknown" | "json" | "yaml" | "toml" | "env" | undefined;
     context?: {
         version?: string | undefined;
         constraints?: {
@@ -510,12 +587,20 @@ export declare const ConfigValidationInputSchema: z.ZodObject<{
         deprecated_keys?: string[] | undefined;
     } | undefined;
     request_id?: string | undefined;
-    schema?: {
-        format?: "custom" | "json-schema" | "zod" | "yup" | "joi" | undefined;
-        content?: unknown;
-        uri?: string | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
     } | undefined;
-    format?: "unknown" | "json" | "yaml" | "toml" | "env" | undefined;
 }>;
 export type ConfigValidationInput = z.infer<typeof ConfigValidationInputSchema>;
 /**
@@ -561,7 +646,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
             message: string;
             tags: string[];
             severity: "error" | "critical" | "info" | "warning";
-            category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+            category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
             finding_id: string;
             related_paths: string[];
             expected?: string | undefined;
@@ -571,7 +656,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
             path: string;
             message: string;
             severity: "error" | "critical" | "info" | "warning";
-            category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+            category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
             finding_id: string;
             expected?: string | undefined;
             tags?: string[] | undefined;
@@ -586,7 +671,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
             message: string;
             tags: string[];
             severity: "error" | "critical" | "info" | "warning";
-            category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+            category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
             finding_id: string;
             related_paths: string[];
             expected?: string | undefined;
@@ -601,7 +686,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
             path: string;
             message: string;
             severity: "error" | "critical" | "info" | "warning";
-            category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+            category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
             finding_id: string;
             expected?: string | undefined;
             tags?: string[] | undefined;
@@ -668,7 +753,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
         message: string;
         tags: string[];
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         related_paths: string[];
         expected?: string | undefined;
@@ -678,7 +763,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
         path: string;
         message: string;
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         expected?: string | undefined;
         tags?: string[] | undefined;
@@ -887,6 +972,12 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
     }>;
 }, "strip", z.ZodTypeAny, {
     valid: boolean;
+    metadata: {
+        config_hash: string;
+        validated_at: string;
+        validation_duration_ms: number;
+        schema_used?: string | undefined;
+    };
     summary: {
         total_findings: number;
         by_severity: {
@@ -899,18 +990,12 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
         paths_checked: number;
         constraints_checked: number;
     };
-    metadata: {
-        config_hash: string;
-        validated_at: string;
-        validation_duration_ms: number;
-        schema_used?: string | undefined;
-    };
     findings: {
         path: string;
         message: string;
         tags: string[];
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         related_paths: string[];
         expected?: string | undefined;
@@ -925,7 +1010,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
             message: string;
             tags: string[];
             severity: "error" | "critical" | "info" | "warning";
-            category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+            category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
             finding_id: string;
             related_paths: string[];
             expected?: string | undefined;
@@ -983,6 +1068,12 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
     };
 }, {
     valid: boolean;
+    metadata: {
+        config_hash: string;
+        validated_at: string;
+        validation_duration_ms: number;
+        schema_used?: string | undefined;
+    };
     summary: {
         total_findings: number;
         by_severity: {
@@ -995,17 +1086,11 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
         paths_checked: number;
         constraints_checked: number;
     };
-    metadata: {
-        config_hash: string;
-        validated_at: string;
-        validation_duration_ms: number;
-        schema_used?: string | undefined;
-    };
     findings: {
         path: string;
         message: string;
         severity: "error" | "critical" | "info" | "warning";
-        category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+        category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
         finding_id: string;
         expected?: string | undefined;
         tags?: string[] | undefined;
@@ -1020,7 +1105,7 @@ export declare const ConfigValidationOutputSchema: z.ZodObject<{
             path: string;
             message: string;
             severity: "error" | "critical" | "info" | "warning";
-            category: "constraint" | "semantic" | "schema" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
+            category: "schema" | "constraint" | "semantic" | "missing" | "conflict" | "deprecated" | "unsafe" | "type_mismatch" | "compatibility";
             finding_id: string;
             expected?: string | undefined;
             tags?: string[] | undefined;

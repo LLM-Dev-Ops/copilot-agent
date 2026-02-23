@@ -257,4 +257,84 @@ describe('Cloud Function Handler', () => {
       expect(body.layers_executed.some(l => l.layer === 'COPILOT_DECOMPOSER')).toBe(true);
     });
   });
+
+  describe('Pipeline Context', () => {
+    it('should include per-agent execution_metadata in agent response', async () => {
+      const req = mockRequest('POST', '/v1/copilot/intent', {
+        text: 'Create a new user',
+      });
+      const { res, getResult } = mockResponse();
+
+      await handler(req, res);
+      const result = getResult();
+
+      expect([200, 422, 500]).toContain(result.statusCode);
+      const body = result.body as {
+        data: {
+          result: unknown;
+          execution_metadata: { trace_id: string; agent: string; domain: string; timestamp: string };
+        };
+      };
+      // Agent response should be wrapped with result + execution_metadata
+      expect(body.data.execution_metadata).toBeDefined();
+      expect(body.data.execution_metadata.agent).toBe('intent');
+      expect(body.data.execution_metadata.domain).toBe('copilot');
+      expect(body.data.execution_metadata.trace_id).toBeDefined();
+      expect(body.data.execution_metadata.timestamp).toBeDefined();
+    });
+
+    it('should echo pipeline_context in agent execution_metadata when provided', async () => {
+      const pipelineContext = {
+        plan_id: 'test-plan-123',
+        step_id: '2',
+        previous_steps: [
+          { step_id: '1', domain: 'copilot', agent: 'decomposer', output: {} }
+        ],
+        execution_metadata: {
+          trace_id: 'trace-abc',
+          initiated_by: 'orchestrator-agents',
+        },
+      };
+      const req = mockRequest('POST', '/v1/copilot/intent', {
+        text: 'Create a new user',
+        pipeline_context: pipelineContext,
+      });
+      const { res, getResult } = mockResponse();
+
+      await handler(req, res);
+      const result = getResult();
+
+      expect([200, 422, 500]).toContain(result.statusCode);
+      const body = result.body as {
+        data: {
+          execution_metadata: {
+            pipeline_context?: { plan_id: string; step_id: string };
+          };
+        };
+      };
+      expect(body.data.execution_metadata.pipeline_context).toBeDefined();
+      expect(body.data.execution_metadata.pipeline_context?.plan_id).toBe('test-plan-123');
+      expect(body.data.execution_metadata.pipeline_context?.step_id).toBe('2');
+    });
+
+    it('should NOT include pipeline_context when not provided (backwards compatible)', async () => {
+      const req = mockRequest('POST', '/v1/copilot/intent', {
+        text: 'Create a new user',
+      });
+      const { res, getResult } = mockResponse();
+
+      await handler(req, res);
+      const result = getResult();
+
+      expect([200, 422, 500]).toContain(result.statusCode);
+      const body = result.body as {
+        data: {
+          execution_metadata: {
+            pipeline_context?: unknown;
+          };
+        };
+      };
+      expect(body.data.execution_metadata.pipeline_context).toBeUndefined();
+    });
+  });
 });

@@ -58,8 +58,16 @@ export declare class PlannerAgent implements BaseAgent<PlannerInput, PlannerOutp
      *
      * This is the core planning logic - purely analytical.
      * NEVER executes, assigns agents, or schedules anything.
+     *
+     * When pipeline_context is present, previous_steps outputs are used
+     * as additional grounding context to improve plan quality.
      */
     private generatePlan;
+    /**
+     * Enrich planner input with context extracted from pipeline previous_steps.
+     * When no pipeline_context exists, returns the input unchanged.
+     */
+    private enrichWithPipelineContext;
     /**
      * Decompose objective into ordered steps
      */

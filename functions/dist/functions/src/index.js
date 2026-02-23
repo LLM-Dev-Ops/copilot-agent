@@ -122,15 +122,27 @@ async function handler(req, res) {
         }
         try {
             const routingLayerStart = Date.now();
-            const agentResult = await (0, router_1.routeRequest)(agentSlug, body);
+            const routeResult = await (0, router_1.routeRequest)(agentSlug, body);
             const routingDuration = Date.now() - routingLayerStart;
             const agentName = agentSlug.toUpperCase().replace(/-/g, '_');
             const layers = [
                 { layer: 'AGENT_ROUTING', status: 'completed' },
                 { layer: `COPILOT_${agentName}`, status: 'completed', duration_ms: routingDuration },
             ];
-            const statusCode = agentResult.status === 'success' ? 200 : 422;
-            sendJson(res, statusCode, (0, envelope_1.wrapResponse)(agentResult, executionMetadata, layers));
+            // Build per-agent execution_metadata
+            const agentMeta = {
+                trace_id: traceId,
+                agent: agentSlug,
+                domain: 'copilot',
+                timestamp: new Date().toISOString(),
+            };
+            if (routeResult.pipelineContext) {
+                agentMeta.pipeline_context = routeResult.pipelineContext;
+            }
+            // Wrap the agent result with per-agent execution_metadata
+            const wrappedResult = (0, envelope_1.wrapAgentResult)(routeResult.agentResult, agentMeta);
+            const statusCode = routeResult.agentResult.status === 'success' ? 200 : 422;
+            sendJson(res, statusCode, (0, envelope_1.wrapResponse)(wrappedResult, executionMetadata, layers));
             return;
         }
         catch (err) {

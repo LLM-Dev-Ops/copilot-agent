@@ -20,6 +20,7 @@
  */
 
 import { z } from 'zod';
+import { PipelineContextSchema } from './pipeline-schemas';
 
 /**
  * Severity levels for validation findings
@@ -330,6 +331,9 @@ export const ConfigValidationInputSchema = z.object({
 
   /** Request ID for tracing */
   request_id: z.string().uuid().optional(),
+
+  /** Optional pipeline context for multi-agent orchestration */
+  pipeline_context: PipelineContextSchema.optional(),
 });
 
 export type ConfigValidationInput = z.infer<typeof ConfigValidationInputSchema>;

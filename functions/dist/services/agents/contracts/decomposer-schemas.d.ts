@@ -36,10 +36,10 @@ export declare const SubObjectiveSchema: z.ZodObject<{
         depends_on: z.ZodString;
         type: z.ZodEnum<["blocking", "data", "sequential"]>;
     }, "strip", z.ZodTypeAny, {
-        type: "blocking" | "data" | "sequential";
+        type: "data" | "blocking" | "sequential";
         depends_on: string;
     }, {
-        type: "blocking" | "data" | "sequential";
+        type: "data" | "blocking" | "sequential";
         depends_on: string;
     }>, "many">>;
     /** Classification tags */
@@ -53,7 +53,7 @@ export declare const SubObjectiveSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     description: string;
     dependencies: {
-        type: "blocking" | "data" | "sequential";
+        type: "data" | "blocking" | "sequential";
         depends_on: string;
     }[];
     tags: string[];
@@ -70,7 +70,7 @@ export declare const SubObjectiveSchema: z.ZodObject<{
     sub_objective_id: string;
     depth: number;
     dependencies?: {
-        type: "blocking" | "data" | "sequential";
+        type: "data" | "blocking" | "sequential";
         depends_on: string;
     }[] | undefined;
     tags?: string[] | undefined;
@@ -97,13 +97,13 @@ export declare const DecomposerInputSchema: z.ZodObject<{
         /** Maximum decomposition depth */
         max_depth: z.ZodOptional<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         max_depth?: number | undefined;
     }, {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         max_depth?: number | undefined;
     }>>;
@@ -122,31 +122,116 @@ export declare const DecomposerInputSchema: z.ZodObject<{
     }>>;
     /** Request ID for tracing */
     request_id: z.ZodOptional<z.ZodString>;
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: z.ZodOptional<z.ZodObject<{
+        plan_id: z.ZodString;
+        step_id: z.ZodString;
+        previous_steps: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            step_id: z.ZodString;
+            domain: z.ZodString;
+            agent: z.ZodString;
+            output: z.ZodOptional<z.ZodUnknown>;
+        }, "strip", z.ZodTypeAny, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }>, "many">>;
+        execution_metadata: z.ZodOptional<z.ZodObject<{
+            trace_id: z.ZodString;
+            initiated_by: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            trace_id: string;
+            initiated_by: string;
+        }, {
+            trace_id: string;
+            initiated_by: string;
+        }>>;
+    }, "strip", z.ZodTypeAny, {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }, {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }>>;
 }, "strip", z.ZodTypeAny, {
     objective: string;
+    config?: {
+        target_granularity?: "medium" | "coarse" | "fine" | undefined;
+        max_sub_objectives?: number | undefined;
+    } | undefined;
     context?: {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         max_depth?: number | undefined;
     } | undefined;
     request_id?: string | undefined;
-    config?: {
-        target_granularity?: "medium" | "coarse" | "fine" | undefined;
-        max_sub_objectives?: number | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
     } | undefined;
 }, {
     objective: string;
+    config?: {
+        target_granularity?: "medium" | "coarse" | "fine" | undefined;
+        max_sub_objectives?: number | undefined;
+    } | undefined;
     context?: {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         max_depth?: number | undefined;
     } | undefined;
     request_id?: string | undefined;
-    config?: {
-        target_granularity?: "medium" | "coarse" | "fine" | undefined;
-        max_sub_objectives?: number | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
     } | undefined;
 }>;
 export type DecomposerInput = z.infer<typeof DecomposerInputSchema>;
@@ -175,10 +260,10 @@ export declare const DecomposerOutputSchema: z.ZodObject<{
             depends_on: z.ZodString;
             type: z.ZodEnum<["blocking", "data", "sequential"]>;
         }, "strip", z.ZodTypeAny, {
-            type: "blocking" | "data" | "sequential";
+            type: "data" | "blocking" | "sequential";
             depends_on: string;
         }, {
-            type: "blocking" | "data" | "sequential";
+            type: "data" | "blocking" | "sequential";
             depends_on: string;
         }>, "many">>;
         /** Classification tags */
@@ -192,7 +277,7 @@ export declare const DecomposerOutputSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         description: string;
         dependencies: {
-            type: "blocking" | "data" | "sequential";
+            type: "data" | "blocking" | "sequential";
             depends_on: string;
         }[];
         tags: string[];
@@ -209,7 +294,7 @@ export declare const DecomposerOutputSchema: z.ZodObject<{
         sub_objective_id: string;
         depth: number;
         dependencies?: {
-            type: "blocking" | "data" | "sequential";
+            type: "data" | "blocking" | "sequential";
             depends_on: string;
         }[] | undefined;
         tags?: string[] | undefined;
@@ -269,7 +354,7 @@ export declare const DecomposerOutputSchema: z.ZodObject<{
     sub_objectives: {
         description: string;
         dependencies: {
-            type: "blocking" | "data" | "sequential";
+            type: "data" | "blocking" | "sequential";
             depends_on: string;
         }[];
         tags: string[];
@@ -300,7 +385,7 @@ export declare const DecomposerOutputSchema: z.ZodObject<{
         sub_objective_id: string;
         depth: number;
         dependencies?: {
-            type: "blocking" | "data" | "sequential";
+            type: "data" | "blocking" | "sequential";
             depends_on: string;
         }[] | undefined;
         tags?: string[] | undefined;

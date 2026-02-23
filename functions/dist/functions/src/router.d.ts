@@ -15,13 +15,22 @@
  *   reflection    → ReflectionAgent
  *   meta-reasoner → MetaReasonerAgent
  */
-import { AgentResult } from '../../services/agents/contracts';
+import { AgentResult, PipelineContext } from '../../services/agents/contracts';
+/**
+ * Result of routing a request to an agent.
+ * Includes the AgentResult plus metadata needed for the response envelope.
+ */
+export interface RouteResult {
+    agentResult: AgentResult;
+    agentSlug: string;
+    pipelineContext?: PipelineContext;
+}
 /**
  * Route a request to the appropriate agent
  *
  * @param slug - The agent slug from the URL path
  * @param body - The parsed JSON request body
- * @returns The agent result (success or error)
+ * @returns RouteResult with agent result and metadata
  * @throws If the slug is unknown
  */
-export declare function routeRequest(slug: string, body: unknown): Promise<AgentResult>;
+export declare function routeRequest(slug: string, body: unknown): Promise<RouteResult>;

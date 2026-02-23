@@ -149,17 +149,32 @@ export class PlannerAgent implements BaseAgent<PlannerInput, PlannerOutput> {
    *
    * This is the core planning logic - purely analytical.
    * NEVER executes, assigns agents, or schedules anything.
+   *
+   * When pipeline_context is present, previous_steps outputs are used
+   * as additional grounding context to improve plan quality.
    */
   private generatePlan(input: PlannerInput): PlannerOutput {
     const planId = uuidv4();
-    const steps = this.decomposeObjective(input);
+
+    // If pipeline_context is present, enrich the input context with
+    // previous step outputs so planning is grounded in upstream results.
+    const enrichedInput = this.enrichWithPipelineContext(input);
+
+    const steps = this.decomposeObjective(enrichedInput);
     const dependencyGraph = this.buildDependencyGraph(steps);
     const criticalPath = this.findCriticalPath(steps, dependencyGraph);
     const parallelGroups = this.identifyParallelGroups(steps, dependencyGraph);
 
+    const assumptions = this.extractAssumptions(enrichedInput);
+    if (input.pipeline_context) {
+      assumptions.push(
+        `Grounded on ${input.pipeline_context.previous_steps.length} previous pipeline step(s)`
+      );
+    }
+
     return {
       plan_id: planId,
-      objective_summary: this.summarizeObjective(input.objective),
+      objective_summary: this.summarizeObjective(enrichedInput.objective),
       steps,
       dependency_graph: dependencyGraph,
       critical_path: criticalPath,
@@ -168,10 +183,70 @@ export class PlannerAgent implements BaseAgent<PlannerInput, PlannerOutput> {
         total_steps: steps.length,
         max_depth: this.calculateMaxDepth(dependencyGraph),
         parallel_opportunities: parallelGroups.filter(g => g.length > 1).length,
-        risks: this.identifyRisks(steps, input),
-        assumptions: this.extractAssumptions(input),
+        risks: this.identifyRisks(steps, enrichedInput),
+        assumptions,
       },
       version: '1.0.0',
+    };
+  }
+
+  /**
+   * Enrich planner input with context extracted from pipeline previous_steps.
+   * When no pipeline_context exists, returns the input unchanged.
+   */
+  private enrichWithPipelineContext(input: PlannerInput): PlannerInput {
+    if (!input.pipeline_context || input.pipeline_context.previous_steps.length === 0) {
+      return input;
+    }
+
+    // Extract useful context from previous step outputs
+    const existingConstraints = input.context?.constraints || [];
+    const existingComponents = input.context?.existing_components || [];
+    const existingPreferences = input.context?.preferences || {};
+
+    const additionalConstraints: string[] = [];
+    const additionalComponents: string[] = [];
+
+    for (const step of input.pipeline_context.previous_steps) {
+      // Each previous step may provide structured output we can use
+      if (step.output && typeof step.output === 'object') {
+        const out = step.output as Record<string, unknown>;
+
+        // From decomposer: extract sub-objective titles as additional context
+        if (step.agent === 'decomposer' && Array.isArray(out.sub_objectives)) {
+          for (const sub of out.sub_objectives as Array<{ title?: string }>) {
+            if (sub.title) {
+              additionalComponents.push(`decomposed:${sub.title}`);
+            }
+          }
+        }
+
+        // From clarifier: use clarified_objective as context
+        if (step.agent === 'clarifier' && out.clarified_objective) {
+          const clarified = out.clarified_objective as { statement?: string; assumptions?: string[] };
+          if (clarified.assumptions) {
+            additionalConstraints.push(...clarified.assumptions);
+          }
+        }
+
+        // From intent: add detected intents as context
+        if (step.agent === 'intent' && out.primary_intent) {
+          const intent = out.primary_intent as { intent_type?: string };
+          if (intent.intent_type) {
+            additionalConstraints.push(`detected_intent:${intent.intent_type}`);
+          }
+        }
+      }
+    }
+
+    return {
+      ...input,
+      context: {
+        domain: input.context?.domain,
+        existing_components: [...existingComponents, ...additionalComponents],
+        constraints: [...existingConstraints, ...additionalConstraints],
+        preferences: existingPreferences,
+      },
     };
   }
 

@@ -7,7 +7,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DecomposerInputSchema = exports.SubObjectiveSchema = exports.ConfigValidationOutputSchema = exports.ConfigValidationInputSchema = exports.ReadinessAssessmentSchema = exports.MissingConfigSchema = exports.ConfigConflictSchema = exports.UnsafeConfigSchema = exports.DeprecatedValueSchema = exports.SemanticConstraintSchema = exports.SchemaValidationResultSchema = exports.ValidationFindingSchema = exports.ValidationCategory = exports.ValidationSeverity = exports.IntentClassifierOutputSchema = exports.IntentClassifierInputSchema = exports.MultiIntentStateSchema = exports.ClassifiedIntentSchema = exports.IntentSignalSchema = exports.IntentType = exports.NormalizedGoalSchema = exports.MissingConstraintSchema = exports.AmbiguitySchema = exports.ObjectiveClarifierOutputSchema = exports.ObjectiveClarifierInputSchema = exports.ReasoningQualityMetricsSchema = exports.SystemicIssueSchema = exports.ConfidenceCalibrationSchema = exports.ContradictionSchema = exports.MetaReasonerOutputSchema = exports.MetaReasonerInputSchema = exports.ReasoningTraceSchema = exports.OutcomeEvaluationSchema = exports.GapAnalysisSchema = exports.LearningSignalSchema = exports.QualitySignalSchema = exports.ReflectionOutputSchema = exports.ReflectionInputSchema = exports.DependencySchema = exports.PlanStepSchema = exports.PlannerOutputSchema = exports.PlannerInputSchema = exports.createErrorResult = exports.AgentErrorCodes = exports.AgentResultSchema = exports.AgentMetadataSchema = exports.AgentClassification = exports.createDecisionEvent = exports.hashInputs = exports.DecisionEventSchema = void 0;
-exports.IntelligenceLayerOutputSchema = exports.IntelligenceLayerInputSchema = exports.ConfidenceDeltaSignalSchema = exports.SimulationOutcomeSignalSchema = exports.HypothesisSignalSchema = exports.PHASE7_PERFORMANCE_BUDGETS = exports.DecomposerOutputSchema = void 0;
+exports.IntelligenceLayerOutputSchema = exports.IntelligenceLayerInputSchema = exports.ConfidenceDeltaSignalSchema = exports.SimulationOutcomeSignalSchema = exports.HypothesisSignalSchema = exports.PHASE7_PERFORMANCE_BUDGETS = exports.PipelineContextSchema = exports.PipelineStepRefSchema = exports.PipelineSpecSchema = exports.PipelineStepSchema = exports.DOMAIN_NAMES = exports.DOMAIN_REGISTRY = exports.DecomposerOutputSchema = void 0;
 // Decision Event
 var decision_event_1 = require("./decision-event");
 Object.defineProperty(exports, "DecisionEventSchema", { enumerable: true, get: function () { return decision_event_1.DecisionEventSchema; } });
@@ -77,6 +77,14 @@ var decomposer_schemas_1 = require("./decomposer-schemas");
 Object.defineProperty(exports, "SubObjectiveSchema", { enumerable: true, get: function () { return decomposer_schemas_1.SubObjectiveSchema; } });
 Object.defineProperty(exports, "DecomposerInputSchema", { enumerable: true, get: function () { return decomposer_schemas_1.DecomposerInputSchema; } });
 Object.defineProperty(exports, "DecomposerOutputSchema", { enumerable: true, get: function () { return decomposer_schemas_1.DecomposerOutputSchema; } });
+// Pipeline Orchestration
+var pipeline_schemas_1 = require("./pipeline-schemas");
+Object.defineProperty(exports, "DOMAIN_REGISTRY", { enumerable: true, get: function () { return pipeline_schemas_1.DOMAIN_REGISTRY; } });
+Object.defineProperty(exports, "DOMAIN_NAMES", { enumerable: true, get: function () { return pipeline_schemas_1.DOMAIN_NAMES; } });
+Object.defineProperty(exports, "PipelineStepSchema", { enumerable: true, get: function () { return pipeline_schemas_1.PipelineStepSchema; } });
+Object.defineProperty(exports, "PipelineSpecSchema", { enumerable: true, get: function () { return pipeline_schemas_1.PipelineSpecSchema; } });
+Object.defineProperty(exports, "PipelineStepRefSchema", { enumerable: true, get: function () { return pipeline_schemas_1.PipelineStepRefSchema; } });
+Object.defineProperty(exports, "PipelineContextSchema", { enumerable: true, get: function () { return pipeline_schemas_1.PipelineContextSchema; } });
 // Phase 7: Intelligence Layer (Layer 2)
 var intelligence_schemas_1 = require("./intelligence-schemas");
 Object.defineProperty(exports, "PHASE7_PERFORMANCE_BUDGETS", { enumerable: true, get: function () { return intelligence_schemas_1.PHASE7_PERFORMANCE_BUDGETS; } });

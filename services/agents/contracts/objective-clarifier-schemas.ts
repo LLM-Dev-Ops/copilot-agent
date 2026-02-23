@@ -17,6 +17,7 @@
  */
 
 import { z } from 'zod';
+import { PipelineContextSchema } from './pipeline-schemas';
 
 /**
  * Ambiguity detection result
@@ -177,6 +178,9 @@ export const ObjectiveClarifierInputSchema = z.object({
 
   /** Request ID for tracing */
   request_id: z.string().uuid().optional(),
+
+  /** Optional pipeline context for multi-agent orchestration */
+  pipeline_context: PipelineContextSchema.optional(),
 });
 
 export type ObjectiveClarifierInput = z.infer<typeof ObjectiveClarifierInputSchema>;

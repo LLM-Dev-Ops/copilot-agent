@@ -21,6 +21,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetaReasonerOutputSchema = exports.ReasoningQualityMetricsSchema = exports.SystemicIssueSchema = exports.ConfidenceCalibrationSchema = exports.ContradictionSchema = exports.MetaReasonerInputSchema = exports.ReasoningTraceSchema = void 0;
 const zod_1 = require("zod");
+const pipeline_schemas_1 = require("./pipeline-schemas");
 /**
  * Reasoning trace from an agent to analyze
  */
@@ -76,6 +77,8 @@ exports.MetaReasonerInputSchema = zod_1.z.object({
     }).optional(),
     /** Request identifier for tracing */
     request_id: zod_1.z.string().uuid().optional(),
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: pipeline_schemas_1.PipelineContextSchema.optional(),
 });
 /**
  * Contradiction finding

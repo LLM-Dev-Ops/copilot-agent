@@ -22,7 +22,13 @@ import * as crypto from 'crypto';
 import { routeRequest } from './router';
 import { handleHealth } from './health';
 import { setCorsHeaders, handlePreflight } from './cors';
-import { ExecutionMetadata, LayerExecuted, wrapResponse } from './envelope';
+import {
+  ExecutionMetadata,
+  LayerExecuted,
+  wrapResponse,
+  wrapAgentResult,
+  AgentExecutionMetadata,
+} from './envelope';
 
 export interface CfRequest extends IncomingMessage {
   body?: unknown;
@@ -115,7 +121,7 @@ export async function handler(req: CfRequest, res: CfResponse): Promise<void> {
 
     try {
       const routingLayerStart = Date.now();
-      const agentResult = await routeRequest(agentSlug, body);
+      const routeResult = await routeRequest(agentSlug, body);
       const routingDuration = Date.now() - routingLayerStart;
 
       const agentName = agentSlug.toUpperCase().replace(/-/g, '_');
@@ -124,8 +130,22 @@ export async function handler(req: CfRequest, res: CfResponse): Promise<void> {
         { layer: `COPILOT_${agentName}`, status: 'completed', duration_ms: routingDuration },
       ];
 
-      const statusCode = agentResult.status === 'success' ? 200 : 422;
-      sendJson(res, statusCode, wrapResponse(agentResult, executionMetadata, layers));
+      // Build per-agent execution_metadata
+      const agentMeta: AgentExecutionMetadata = {
+        trace_id: traceId,
+        agent: agentSlug,
+        domain: 'copilot',
+        timestamp: new Date().toISOString(),
+      };
+      if (routeResult.pipelineContext) {
+        agentMeta.pipeline_context = routeResult.pipelineContext;
+      }
+
+      // Wrap the agent result with per-agent execution_metadata
+      const wrappedResult = wrapAgentResult(routeResult.agentResult, agentMeta);
+
+      const statusCode = routeResult.agentResult.status === 'success' ? 200 : 422;
+      sendJson(res, statusCode, wrapResponse(wrappedResult, executionMetadata, layers));
       return;
     } catch (err) {
       const agentName = agentSlug.toUpperCase().replace(/-/g, '_');

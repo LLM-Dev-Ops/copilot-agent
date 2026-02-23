@@ -17,7 +17,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { AgentResult } from '../../services/agents/contracts';
+import { AgentResult, PipelineContext, PipelineContextSchema } from '../../services/agents/contracts';
 
 // Agent imports
 import { PlannerAgent } from '../../services/agents/planner';
@@ -93,14 +93,24 @@ function createAgent(slug: string): RoutableAgent | null {
 }
 
 /**
+ * Result of routing a request to an agent.
+ * Includes the AgentResult plus metadata needed for the response envelope.
+ */
+export interface RouteResult {
+  agentResult: AgentResult;
+  agentSlug: string;
+  pipelineContext?: PipelineContext;
+}
+
+/**
  * Route a request to the appropriate agent
  *
  * @param slug - The agent slug from the URL path
  * @param body - The parsed JSON request body
- * @returns The agent result (success or error)
+ * @returns RouteResult with agent result and metadata
  * @throws If the slug is unknown
  */
-export async function routeRequest(slug: string, body: unknown): Promise<AgentResult> {
+export async function routeRequest(slug: string, body: unknown): Promise<RouteResult> {
   const agent = createAgent(slug);
 
   if (!agent) {
@@ -115,9 +125,24 @@ export async function routeRequest(slug: string, body: unknown): Promise<AgentRe
     ? bodyObj.execution_ref
     : uuidv4();
 
+  // Extract pipeline_context if present (safe parse — don't fail if malformed)
+  let pipelineContext: PipelineContext | undefined;
+  if (bodyObj.pipeline_context !== undefined) {
+    const parsed = PipelineContextSchema.safeParse(bodyObj.pipeline_context);
+    if (parsed.success) {
+      pipelineContext = parsed.data;
+    }
+  }
+
   // Validate input through the agent's schema
   const validatedInput = agent.validateInput(body);
 
   // Invoke the agent
-  return agent.invoke(validatedInput, executionRef);
+  const agentResult = await agent.invoke(validatedInput, executionRef);
+
+  return {
+    agentResult,
+    agentSlug: slug,
+    pipelineContext,
+  };
 }

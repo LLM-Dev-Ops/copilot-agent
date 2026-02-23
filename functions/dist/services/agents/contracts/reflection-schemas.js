@@ -19,6 +19,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReflectionOutputSchema = exports.ReflectionInputSchema = exports.OutcomeEvaluationSchema = exports.GapAnalysisSchema = exports.LearningSignalSchema = exports.QualitySignalSchema = void 0;
 const zod_1 = require("zod");
+const pipeline_schemas_1 = require("./pipeline-schemas");
 const decision_event_1 = require("./decision-event");
 /**
  * Quality Signal - extracted quality indicators
@@ -162,6 +163,8 @@ exports.ReflectionInputSchema = zod_1.z.object({
     }).optional(),
     /** Request ID for tracing */
     request_id: zod_1.z.string().uuid().optional(),
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: pipeline_schemas_1.PipelineContextSchema.optional(),
 });
 /**
  * Reflection Agent Output Schema

@@ -28,11 +28,11 @@ export declare const DependencySchema: z.ZodObject<{
     /** Optional: specific output field required from dependency */
     required_output: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    type: "blocking" | "data" | "resource" | "sequential";
+    type: "data" | "blocking" | "resource" | "sequential";
     depends_on: string;
     required_output?: string | undefined;
 }, {
-    type: "blocking" | "data" | "resource" | "sequential";
+    type: "data" | "blocking" | "resource" | "sequential";
     depends_on: string;
     required_output?: string | undefined;
 }>;
@@ -58,11 +58,11 @@ export declare const PlanStepSchema: z.ZodObject<{
         /** Optional: specific output field required from dependency */
         required_output: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        type: "blocking" | "data" | "resource" | "sequential";
+        type: "data" | "blocking" | "resource" | "sequential";
         depends_on: string;
         required_output?: string | undefined;
     }, {
-        type: "blocking" | "data" | "resource" | "sequential";
+        type: "data" | "blocking" | "resource" | "sequential";
         depends_on: string;
         required_output?: string | undefined;
     }>, "many">>;
@@ -111,7 +111,7 @@ export declare const PlanStepSchema: z.ZodObject<{
     step_id: string;
     sequence_order: number;
     dependencies: {
-        type: "blocking" | "data" | "resource" | "sequential";
+        type: "data" | "blocking" | "resource" | "sequential";
         depends_on: string;
         required_output?: string | undefined;
     }[];
@@ -136,7 +136,7 @@ export declare const PlanStepSchema: z.ZodObject<{
     step_id: string;
     sequence_order: number;
     dependencies?: {
-        type: "blocking" | "data" | "resource" | "sequential";
+        type: "data" | "blocking" | "resource" | "sequential";
         depends_on: string;
         required_output?: string | undefined;
     }[] | undefined;
@@ -170,13 +170,13 @@ export declare const PlannerInputSchema: z.ZodObject<{
         constraints: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         preferences: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     }, "strip", z.ZodTypeAny, {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         preferences?: Record<string, string> | undefined;
     }, {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         preferences?: Record<string, string> | undefined;
     }>>;
@@ -196,11 +196,68 @@ export declare const PlannerInputSchema: z.ZodObject<{
     }>>;
     /** Request ID for tracing */
     request_id: z.ZodOptional<z.ZodString>;
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: z.ZodOptional<z.ZodObject<{
+        plan_id: z.ZodString;
+        step_id: z.ZodString;
+        previous_steps: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            step_id: z.ZodString;
+            domain: z.ZodString;
+            agent: z.ZodString;
+            output: z.ZodOptional<z.ZodUnknown>;
+        }, "strip", z.ZodTypeAny, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }, {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }>, "many">>;
+        execution_metadata: z.ZodOptional<z.ZodObject<{
+            trace_id: z.ZodString;
+            initiated_by: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            trace_id: string;
+            initiated_by: string;
+        }, {
+            trace_id: string;
+            initiated_by: string;
+        }>>;
+    }, "strip", z.ZodTypeAny, {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }, {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    }>>;
 }, "strip", z.ZodTypeAny, {
     objective: string;
     context?: {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         preferences?: Record<string, string> | undefined;
     } | undefined;
@@ -210,11 +267,25 @@ export declare const PlannerInputSchema: z.ZodObject<{
         focus_areas?: string[] | undefined;
     } | undefined;
     request_id?: string | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[];
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    } | undefined;
 }, {
     objective: string;
     context?: {
-        constraints?: string[] | undefined;
         domain?: string | undefined;
+        constraints?: string[] | undefined;
         existing_components?: string[] | undefined;
         preferences?: Record<string, string> | undefined;
     } | undefined;
@@ -224,6 +295,20 @@ export declare const PlannerInputSchema: z.ZodObject<{
         focus_areas?: string[] | undefined;
     } | undefined;
     request_id?: string | undefined;
+    pipeline_context?: {
+        step_id: string;
+        plan_id: string;
+        previous_steps?: {
+            step_id: string;
+            domain: string;
+            agent: string;
+            output?: unknown;
+        }[] | undefined;
+        execution_metadata?: {
+            trace_id: string;
+            initiated_by: string;
+        } | undefined;
+    } | undefined;
 }>;
 export type PlannerInput = z.infer<typeof PlannerInputSchema>;
 /**
@@ -253,11 +338,11 @@ export declare const PlannerOutputSchema: z.ZodObject<{
             /** Optional: specific output field required from dependency */
             required_output: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
-            type: "blocking" | "data" | "resource" | "sequential";
+            type: "data" | "blocking" | "resource" | "sequential";
             depends_on: string;
             required_output?: string | undefined;
         }, {
-            type: "blocking" | "data" | "resource" | "sequential";
+            type: "data" | "blocking" | "resource" | "sequential";
             depends_on: string;
             required_output?: string | undefined;
         }>, "many">>;
@@ -306,7 +391,7 @@ export declare const PlannerOutputSchema: z.ZodObject<{
         step_id: string;
         sequence_order: number;
         dependencies: {
-            type: "blocking" | "data" | "resource" | "sequential";
+            type: "data" | "blocking" | "resource" | "sequential";
             depends_on: string;
             required_output?: string | undefined;
         }[];
@@ -331,7 +416,7 @@ export declare const PlannerOutputSchema: z.ZodObject<{
         step_id: string;
         sequence_order: number;
         dependencies?: {
-            type: "blocking" | "data" | "resource" | "sequential";
+            type: "data" | "blocking" | "resource" | "sequential";
             depends_on: string;
             required_output?: string | undefined;
         }[] | undefined;
@@ -407,14 +492,13 @@ export declare const PlannerOutputSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     version: string;
     plan_id: string;
-    objective_summary: string;
     steps: {
         name: string;
         description: string;
         step_id: string;
         sequence_order: number;
         dependencies: {
-            type: "blocking" | "data" | "resource" | "sequential";
+            type: "data" | "blocking" | "resource" | "sequential";
             depends_on: string;
             required_output?: string | undefined;
         }[];
@@ -434,6 +518,7 @@ export declare const PlannerOutputSchema: z.ZodObject<{
         parallelizable: boolean;
         criticality: "low" | "medium" | "high" | "critical";
     }[];
+    objective_summary: string;
     dependency_graph: Record<string, string[]>;
     critical_path: string[];
     parallel_groups: string[][];
@@ -450,14 +535,13 @@ export declare const PlannerOutputSchema: z.ZodObject<{
     };
 }, {
     plan_id: string;
-    objective_summary: string;
     steps: {
         name: string;
         description: string;
         step_id: string;
         sequence_order: number;
         dependencies?: {
-            type: "blocking" | "data" | "resource" | "sequential";
+            type: "data" | "blocking" | "resource" | "sequential";
             depends_on: string;
             required_output?: string | undefined;
         }[] | undefined;
@@ -477,6 +561,7 @@ export declare const PlannerOutputSchema: z.ZodObject<{
         parallelizable?: boolean | undefined;
         criticality?: "low" | "medium" | "high" | "critical" | undefined;
     }[];
+    objective_summary: string;
     dependency_graph: Record<string, string[]>;
     critical_path: string[];
     parallel_groups: string[][];

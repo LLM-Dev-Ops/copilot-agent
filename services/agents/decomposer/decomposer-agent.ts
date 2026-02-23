@@ -2,6 +2,7 @@
  * Decomposer Agent
  *
  * Purpose: Decompose complex objectives into manageable sub-objectives
+ *          and produce structured pipeline execution plans.
  * Classification: DECOMPOSITION, STRUCTURAL_SYNTHESIS
  * decision_type: objective_decomposition
  *
@@ -9,6 +10,7 @@
  * - Break complex objectives into sub-objectives
  * - Identify sub-objective relationships
  * - Assess decomposition completeness
+ * - Produce a pipeline spec (DAG) routing to agents across the 27-domain registry
  *
  * CONSTITUTION COMPLIANCE:
  * ✓ Stateless at runtime
@@ -42,6 +44,13 @@ import {
   DecomposerInput,
   DecomposerOutput,
   SubObjective,
+  DOMAIN_REGISTRY,
+  DOMAIN_NAMES,
+  PipelineSpec,
+  PipelineSpecSchema,
+  PipelineStep,
+  type DomainName,
+  type PipelineContext,
 } from '../contracts';
 import { RuvectorPersistence } from '../planner/ruvector-persistence';
 import { Telemetry } from '../planner/telemetry';
@@ -51,9 +60,94 @@ const AGENT_VERSION = '1.0.0';
 const DECISION_TYPE = 'objective_decomposition';
 
 /**
+ * Keyword → domain/agent routing table.
+ * Used by buildPipelineSpec to map objective text to pipeline steps.
+ */
+interface DomainRoute {
+  keywords: string[];
+  domain: DomainName;
+  agent: string;
+  description: string;
+  output_schema: string;
+}
+
+const DOMAIN_ROUTES: DomainRoute[] = [
+  // copilot domain
+  { keywords: ['plan', 'strategy', 'roadmap', 'approach'],       domain: 'copilot',   agent: 'planner',       description: 'Generate implementation plan',            output_schema: 'plan_artifact' },
+  { keywords: ['clarify', 'ambiguous', 'unclear', 'requirements'], domain: 'copilot',  agent: 'clarifier',     description: 'Clarify objective requirements',           output_schema: 'clarification_artifact' },
+  { keywords: ['intent', 'classify', 'categorize'],                domain: 'copilot',  agent: 'intent',        description: 'Classify user intent',                     output_schema: 'intent_artifact' },
+  { keywords: ['reflect', 'evaluate', 'review', 'quality'],        domain: 'copilot',  agent: 'reflection',    description: 'Evaluate decision quality',                output_schema: 'reflection_artifact' },
+  { keywords: ['validate', 'config', 'configuration'],             domain: 'copilot',  agent: 'config',        description: 'Validate configuration',                   output_schema: 'config_artifact' },
+  // forge domain
+  { keywords: ['scaffold', 'mvp', 'prototype', 'boilerplate'],    domain: 'forge',     agent: 'scaffold',      description: 'Scaffold project structure',               output_schema: 'forge_artifact' },
+  { keywords: ['sdk', 'library', 'package'],                       domain: 'forge',     agent: 'sdk',           description: 'Generate SDK / library scaffold',          output_schema: 'forge_artifact' },
+  { keywords: ['template', 'starter'],                             domain: 'forge',     agent: 'template',      description: 'Apply project template',                   output_schema: 'forge_artifact' },
+  // runtime domain
+  { keywords: ['execute', 'run', 'sandbox'],                       domain: 'runtime',   agent: 'executor',      description: 'Execute code in sandbox',                  output_schema: 'runtime_artifact' },
+  // data domain
+  { keywords: ['ingest', 'etl', 'import', 'data pipeline'],       domain: 'data',      agent: 'ingest',        description: 'Ingest data from sources',                 output_schema: 'data_artifact' },
+  { keywords: ['transform', 'clean', 'normalize data'],           domain: 'data',      agent: 'transform',     description: 'Transform and clean data',                 output_schema: 'data_artifact' },
+  { keywords: ['query', 'sql', 'database', 'db'],                 domain: 'data',      agent: 'query',         description: 'Query data sources',                       output_schema: 'data_artifact' },
+  // auth domain
+  { keywords: ['auth', 'login', 'identity', 'sso', 'oauth'],     domain: 'auth',      agent: 'identity',      description: 'Set up authentication / identity',         output_schema: 'auth_artifact' },
+  { keywords: ['rbac', 'permission', 'role', 'access control'],   domain: 'auth',      agent: 'rbac',          description: 'Configure role-based access',              output_schema: 'auth_artifact' },
+  // deploy domain
+  { keywords: ['deploy', 'release', 'ship', 'production', 'ci/cd'], domain: 'deploy',  agent: 'cd',            description: 'Plan deployment pipeline',                 output_schema: 'deploy_artifact' },
+  { keywords: ['rollback', 'revert'],                              domain: 'deploy',    agent: 'rollback',      description: 'Plan rollback strategy',                   output_schema: 'deploy_artifact' },
+  // test domain
+  { keywords: ['test', 'unit test', 'spec'],                       domain: 'test',      agent: 'unit',          description: 'Generate unit tests',                      output_schema: 'test_artifact' },
+  { keywords: ['integration test', 'contract test'],               domain: 'test',      agent: 'integration',   description: 'Generate integration tests',               output_schema: 'test_artifact' },
+  { keywords: ['e2e', 'end-to-end', 'acceptance test'],           domain: 'test',      agent: 'e2e',           description: 'Generate end-to-end tests',                output_schema: 'test_artifact' },
+  // docs domain
+  { keywords: ['document', 'docs', 'readme', 'api doc'],          domain: 'docs',      agent: 'generate',      description: 'Generate documentation',                   output_schema: 'docs_artifact' },
+  // security domain
+  { keywords: ['security', 'scan', 'vulnerability'],               domain: 'security',  agent: 'scan',          description: 'Run security scan',                        output_schema: 'security_artifact' },
+  { keywords: ['audit', 'compliance', 'gdpr', 'hipaa', 'soc2'],  domain: 'security',  agent: 'audit',         description: 'Perform security audit',                   output_schema: 'security_artifact' },
+  // ml domain
+  { keywords: ['train', 'model', 'machine learning', 'ml'],       domain: 'ml',        agent: 'train',         description: 'Train ML model',                           output_schema: 'ml_artifact' },
+  { keywords: ['inference', 'predict'],                            domain: 'ml',        agent: 'inference',     description: 'Run ML inference',                         output_schema: 'ml_artifact' },
+  // ui domain
+  { keywords: ['ui', 'component', 'frontend', 'react', 'vue'],   domain: 'ui',        agent: 'component',     description: 'Build UI components',                      output_schema: 'ui_artifact' },
+  // messaging domain
+  { keywords: ['event', 'pubsub', 'queue', 'message', 'kafka'],  domain: 'messaging', agent: 'pubsub',        description: 'Configure messaging / events',             output_schema: 'messaging_artifact' },
+  // storage domain
+  { keywords: ['storage', 'upload', 'blob', 'file', 's3'],       domain: 'storage',   agent: 'blob',          description: 'Configure storage',                        output_schema: 'storage_artifact' },
+  { keywords: ['cache', 'redis', 'memcache'],                     domain: 'storage',   agent: 'cache',         description: 'Configure caching layer',                  output_schema: 'storage_artifact' },
+  // gateway domain
+  { keywords: ['api gateway', 'route', 'proxy', 'rate limit'],   domain: 'gateway',   agent: 'route',         description: 'Configure API gateway',                    output_schema: 'gateway_artifact' },
+  // analytics domain
+  { keywords: ['analytics', 'metrics', 'dashboard', 'report'],    domain: 'analytics', agent: 'report',        description: 'Set up analytics / reporting',             output_schema: 'analytics_artifact' },
+  // notification domain
+  { keywords: ['notify', 'email', 'push', 'webhook', 'alert'],   domain: 'notification', agent: 'webhook',    description: 'Configure notifications',                  output_schema: 'notification_artifact' },
+  // migration domain
+  { keywords: ['migrate', 'migration', 'upgrade'],                domain: 'migration', agent: 'schema',        description: 'Plan migration',                           output_schema: 'migration_artifact' },
+  // i18n domain
+  { keywords: ['translate', 'i18n', 'locale', 'internationali'],  domain: 'i18n',      agent: 'translate',     description: 'Set up internationalisation',              output_schema: 'i18n_artifact' },
+  // devtools domain
+  { keywords: ['lint', 'format', 'prettier', 'eslint'],           domain: 'devtools',  agent: 'lint',          description: 'Configure linting / formatting',           output_schema: 'devtools_artifact' },
+  // observability domain
+  { keywords: ['monitor', 'trace', 'observability', 'log'],       domain: 'observability', agent: 'trace',     description: 'Set up observability',                     output_schema: 'observability_artifact' },
+  // edge domain
+  { keywords: ['cdn', 'edge', 'serverless function'],             domain: 'edge',      agent: 'cdn',           description: 'Configure edge / CDN',                     output_schema: 'edge_artifact' },
+  // secret domain
+  { keywords: ['secret', 'vault', 'credential', 'env var'],      domain: 'secret',    agent: 'vault',         description: 'Manage secrets / credentials',             output_schema: 'secret_artifact' },
+  // workflow domain
+  { keywords: ['workflow', 'pipeline', 'orchestrat'],             domain: 'workflow',  agent: 'orchestrate',   description: 'Design workflow orchestration',            output_schema: 'workflow_artifact' },
+  // billing domain
+  { keywords: ['billing', 'payment', 'invoice', 'subscription'], domain: 'billing',   agent: 'meter',         description: 'Configure billing / metering',             output_schema: 'billing_artifact' },
+  // config (as a domain, distinct from copilot/config agent)
+  { keywords: ['feature flag', 'remote config', 'distribute config'], domain: 'config', agent: 'distribute',  description: 'Distribute configuration',                 output_schema: 'config_dist_artifact' },
+  // search domain
+  { keywords: ['search', 'elasticsearch', 'full-text', 'index'], domain: 'search',    agent: 'index',         description: 'Set up search indexing',                   output_schema: 'search_artifact' },
+];
+
+/**
  * Decomposer Agent Implementation
  *
- * This agent analyzes complex objectives and produces structured sub-objectives.
+ * This agent analyzes complex objectives and produces:
+ * 1. Structured sub-objectives (legacy output, always produced)
+ * 2. A pipeline_spec — a DAG of steps routed across the 27-domain registry
+ *
  * It is purely analytical - it NEVER executes, assigns, or schedules anything.
  */
 export class DecomposerAgent implements BaseAgent<DecomposerInput, DecomposerOutput> {
@@ -66,7 +160,7 @@ export class DecomposerAgent implements BaseAgent<DecomposerInput, DecomposerOut
       AgentClassification.STRUCTURAL_SYNTHESIS,
     ],
     decision_type: DECISION_TYPE,
-    description: 'Decomposes complex objectives into manageable sub-objectives with relationships and completeness assessment.',
+    description: 'Decomposes complex objectives into manageable sub-objectives and produces structured pipeline execution plans routed across the 27-domain registry.',
   };
 
   private readonly persistence: RuvectorPersistence;
@@ -104,6 +198,15 @@ export class DecomposerAgent implements BaseAgent<DecomposerInput, DecomposerOut
       // Validate output
       const validatedOutput = DecomposerOutputSchema.parse(output);
 
+      // Build the pipeline spec from the sub-objectives + objective text
+      const pipelineSpec = this.buildPipelineSpec(input, validatedOutput);
+
+      // Combined output: legacy decomposer output + pipeline_spec
+      const combinedOutput = {
+        ...validatedOutput,
+        pipeline_spec: pipelineSpec,
+      };
+
       // Calculate confidence based on decomposition quality
       const confidence = this.calculateConfidence(validatedOutput);
 
@@ -116,7 +219,7 @@ export class DecomposerAgent implements BaseAgent<DecomposerInput, DecomposerOut
         AGENT_VERSION,
         DECISION_TYPE,
         input,
-        validatedOutput,
+        combinedOutput,
         confidence,
         constraintsApplied,
         executionRef
@@ -142,6 +245,106 @@ export class DecomposerAgent implements BaseAgent<DecomposerInput, DecomposerOut
       return createErrorResult(errorCode, errorMessage, executionRef);
     }
   }
+
+  // -------------------------------------------------------------------------
+  // Pipeline Spec Builder
+  // -------------------------------------------------------------------------
+
+  /**
+   * Build a structured pipeline spec (DAG) from the objective.
+   *
+   * Analyses the query text to select domains and agents from the
+   * 27-domain registry. Produces an ordered list of steps where
+   * `input_from` expresses data-flow dependencies.
+   */
+  private buildPipelineSpec(input: DecomposerInput, decomposition: DecomposerOutput): PipelineSpec {
+    const planId = uuidv4();
+    const objectiveLower = input.objective.toLowerCase();
+
+    // --- Step 1: always start with a planner step ---
+    const steps: PipelineStep[] = [
+      {
+        step_id: '1',
+        domain: 'copilot',
+        agent: 'planner',
+        description: 'Generate implementation plan',
+        input_from: null,
+        output_schema: 'plan_artifact',
+      },
+    ];
+
+    let stepCounter = 1;
+    const usedDomainAgents = new Set<string>(['copilot/planner']);
+
+    // --- Step 2: match objective keywords to domain routes ---
+    for (const route of DOMAIN_ROUTES) {
+      const key = `${route.domain}/${route.agent}`;
+      if (usedDomainAgents.has(key)) continue;
+
+      const matched = route.keywords.some(kw => objectiveLower.includes(kw));
+      if (!matched) continue;
+
+      usedDomainAgents.add(key);
+      stepCounter++;
+
+      // Determine dependency: most steps depend on the planner output.
+      // Build/scaffold steps depend on planner; test steps depend on build; deploy depends on test.
+      let inputFrom: string | null = '1'; // default: depends on planner
+
+      if (route.domain === 'test') {
+        // test depends on the latest forge/runtime step, or planner
+        const buildStep = steps.find(s => s.domain === 'forge' || s.domain === 'runtime');
+        inputFrom = buildStep ? buildStep.step_id : '1';
+      } else if (route.domain === 'deploy') {
+        // deploy depends on latest test step, or build, or planner
+        const testStep = steps.find(s => s.domain === 'test');
+        const buildStep = steps.find(s => s.domain === 'forge' || s.domain === 'runtime');
+        inputFrom = testStep ? testStep.step_id : (buildStep ? buildStep.step_id : '1');
+      } else if (route.domain === 'docs') {
+        // docs depend on planner + any build step
+        const buildStep = steps.find(s => s.domain === 'forge' || s.domain === 'runtime');
+        inputFrom = buildStep ? buildStep.step_id : '1';
+      }
+
+      steps.push({
+        step_id: String(stepCounter),
+        domain: route.domain,
+        agent: route.agent,
+        description: route.description,
+        input_from: inputFrom,
+        output_schema: route.output_schema,
+      });
+    }
+
+    // --- Step 3: if nothing beyond planner was matched, add a forge/scaffold step ---
+    if (steps.length === 1) {
+      steps.push({
+        step_id: '2',
+        domain: 'forge',
+        agent: 'sdk',
+        description: 'Scaffold MVP from plan',
+        input_from: '1',
+        output_schema: 'forge_artifact',
+      });
+    }
+
+    // Validate (will throw on schema violation, caught in invoke)
+    const spec: PipelineSpec = PipelineSpecSchema.parse({
+      plan_id: planId,
+      steps,
+      metadata: {
+        source_query: input.objective,
+        created_at: new Date().toISOString(),
+        estimated_steps: steps.length,
+      },
+    });
+
+    return spec;
+  }
+
+  // -------------------------------------------------------------------------
+  // Legacy Decomposition Logic (unchanged)
+  // -------------------------------------------------------------------------
 
   /**
    * Decompose objective into sub-objectives
@@ -511,10 +714,15 @@ export class DecomposerAgent implements BaseAgent<DecomposerInput, DecomposerOut
       'no_resource_allocation',
       'no_scheduling',
       'deterministic_output',
+      'pipeline_spec_generation',
     ];
 
     if (input.context?.constraints) {
       constraints.push(...input.context.constraints.map(c => `user_constraint:${c}`));
+    }
+
+    if (input.pipeline_context) {
+      constraints.push('pipeline_context_present');
     }
 
     return constraints;

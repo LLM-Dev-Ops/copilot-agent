@@ -19,6 +19,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ObjectiveClarifierOutputSchema = exports.ObjectiveClarifierInputSchema = exports.NormalizedGoalSchema = exports.MissingConstraintSchema = exports.AmbiguitySchema = void 0;
 const zod_1 = require("zod");
+const pipeline_schemas_1 = require("./pipeline-schemas");
 /**
  * Ambiguity detection result
  */
@@ -139,6 +140,8 @@ exports.ObjectiveClarifierInputSchema = zod_1.z.object({
     }).optional(),
     /** Request ID for tracing */
     request_id: zod_1.z.string().uuid().optional(),
+    /** Optional pipeline context for multi-agent orchestration */
+    pipeline_context: pipeline_schemas_1.PipelineContextSchema.optional(),
 });
 /**
  * Objective Clarifier Agent Output Schema
