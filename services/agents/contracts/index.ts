@@ -21,6 +21,8 @@ export {
   type AgentMetadata,
   AgentResultSchema,
   type AgentResult,
+  PersistenceStatusSchema,
+  type PersistenceStatus,
   type BaseAgent,
   AgentErrorCodes,
   type AgentErrorCode,

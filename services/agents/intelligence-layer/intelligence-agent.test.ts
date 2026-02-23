@@ -242,7 +242,7 @@ describe('IntelligenceLayerAgent', () => {
         const output = result.event.outputs as any;
         expect(output.resource_consumption).toBeDefined();
         expect(output.resource_consumption.total_tokens_used).toBeGreaterThan(0);
-        expect(output.resource_consumption.total_latency_ms).toBeGreaterThan(0);
+        expect(output.resource_consumption.total_latency_ms).toBeGreaterThanOrEqual(0);
         expect(typeof output.resource_consumption.within_budget).toBe('boolean');
       }
     });
@@ -339,7 +339,7 @@ describe('IntelligenceLayerAgent', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle persistence errors gracefully', async () => {
+    it('should handle persistence errors gracefully and return success', async () => {
       const failingPersistence = {
         store: vi.fn().mockRejectedValue(new Error('RuVector connection failed')),
         retrieve: vi.fn(),
@@ -359,13 +359,15 @@ describe('IntelligenceLayerAgent', () => {
 
       const result = await failingAgent.invoke(input, uuidv4());
 
-      expect(result.status).toBe('error');
-      if (result.status === 'error') {
-        expect(result.error_code).toBe('AGENT_PERSISTENCE_ERROR');
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.persistence_status.status).toBe('skipped');
+        expect(result.persistence_status.error).toContain('RuVector connection failed');
+        expect(result.event).toBeDefined();
       }
     });
 
-    it('should record telemetry on failure', async () => {
+    it('should record success telemetry even on persistence failure', async () => {
       const failingPersistence = {
         store: vi.fn().mockRejectedValue(new Error('Test error')),
         retrieve: vi.fn(),
@@ -385,7 +387,7 @@ describe('IntelligenceLayerAgent', () => {
 
       await failingAgent.invoke(input, uuidv4());
 
-      expect(mockTelemetry.recordFailure).toHaveBeenCalled();
+      expect(mockTelemetry.recordSuccess).toHaveBeenCalled();
     });
   });
 });

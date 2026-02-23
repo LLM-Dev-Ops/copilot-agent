@@ -496,7 +496,7 @@ describe('ConfigValidationAgent', () => {
   });
 
   describe('Error Handling', () => {
-    it('should return error result on persistence failure', async () => {
+    it('should return success with skipped persistence_status on persistence failure', async () => {
       const badPersistence = {
         store: jest.fn().mockRejectedValue(new Error('Persistence failed')),
       } as unknown as RuvectorPersistence;
@@ -507,14 +507,15 @@ describe('ConfigValidationAgent', () => {
         '550e8400-e29b-41d4-a716-446655440021'
       );
 
-      expect(result.status).toBe('error');
-      if (result.status === 'error') {
-        expect(result.error_code).toBeDefined();
-        expect(result.error_message).toContain('Persistence');
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.persistence_status.status).toBe('skipped');
+        expect(result.persistence_status.error).toContain('Persistence failed');
+        expect(result.event).toBeDefined();
       }
     });
 
-    it('should emit failure telemetry on error', async () => {
+    it('should emit success telemetry even on persistence failure', async () => {
       const badPersistence = {
         store: jest.fn().mockRejectedValue(new Error('Test error')),
       } as unknown as RuvectorPersistence;
@@ -522,7 +523,7 @@ describe('ConfigValidationAgent', () => {
       const errorAgent = new ConfigValidationAgent(badPersistence, mockTelemetry);
       await errorAgent.invoke({ config: {} }, '550e8400-e29b-41d4-a716-446655440022');
 
-      expect(mockTelemetry.recordFailure).toHaveBeenCalled();
+      expect(mockTelemetry.recordSuccess).toHaveBeenCalled();
     });
   });
 

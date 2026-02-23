@@ -126,8 +126,16 @@ export class MetaReasonerAgent implements BaseAgent<MetaReasonerInput, MetaReaso
         executionRef
       );
 
-      // Persist via ruvector-service ONLY
-      await this.persistence.store(event);
+      // Persist via ruvector-service (best-effort, non-blocking)
+      let persistence_status: { status: 'persisted' | 'skipped'; error?: string };
+      try {
+        await this.persistence.store(event);
+        persistence_status = { status: 'persisted' };
+      } catch (persistError) {
+        const persistMessage = persistError instanceof Error ? persistError.message : 'Unknown persistence error';
+        console.error(`[${AGENT_ID}] RuVector persistence failed (non-blocking): ${persistMessage}`);
+        persistence_status = { status: 'skipped', error: persistMessage };
+      }
 
       // Emit telemetry success
       this.telemetry.recordSuccess(AGENT_ID, executionRef, Date.now() - startTime);
@@ -135,6 +143,7 @@ export class MetaReasonerAgent implements BaseAgent<MetaReasonerInput, MetaReaso
       return {
         status: 'success',
         event,
+        persistence_status,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

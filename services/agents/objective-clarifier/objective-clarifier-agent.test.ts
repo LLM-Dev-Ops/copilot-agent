@@ -405,7 +405,7 @@ describe('ObjectiveClarifierAgent', () => {
   });
 
   describe('Error Handling', () => {
-    it('should emit telemetry failure on persistence error', async () => {
+    it('should return success with skipped persistence_status on persistence error', async () => {
       const failingPersistence = {
         store: jest.fn().mockRejectedValue(new Error('RuVector connection failed')),
       } as unknown as RuvectorPersistence;
@@ -421,19 +421,18 @@ describe('ObjectiveClarifierAgent', () => {
       const executionRef = '550e8400-e29b-41d4-a716-446655440000';
 
       const result = await agentWithFailingPersistence.invoke(input, executionRef);
-      expect(result.status).toBe('error');
-      expect(mockTelemetry.recordFailure).toHaveBeenCalled();
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.persistence_status.status).toBe('skipped');
+        expect(result.persistence_status.error).toContain('RuVector connection failed');
+      }
+      expect(mockTelemetry.recordSuccess).toHaveBeenCalled();
     });
 
-    it('should return proper error code for validation failure', async () => {
-      const input = { objective: '' }; // Invalid
-      const executionRef = '550e8400-e29b-41d4-a716-446655440000';
-
-      // Need to bypass validateInput by calling invoke directly with invalid data
-      // Actually, invoke expects validated input, so this tests the agent's internal handling
-      const result = await agent.invoke({ objective: '' } as ObjectiveClarifierInput, executionRef);
-      // The ZodError should be caught and converted to proper error result
-      expect(result.status).toBe('error');
+    it('should reject empty objective at validation boundary', () => {
+      // Empty objective violates the min(1) constraint in ObjectiveClarifierInputSchema.
+      // Validation happens before invoke() — the router calls validateInput() first.
+      expect(() => agent.validateInput({ objective: '' })).toThrow();
     });
   });
 });

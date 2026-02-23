@@ -51,10 +51,18 @@ export type AgentMetadata = z.infer<typeof AgentMetadataSchema>;
 /**
  * Agent Invocation Result - wraps DecisionEvent with status
  */
+export const PersistenceStatusSchema = z.object({
+  status: z.enum(['persisted', 'skipped']),
+  error: z.string().optional(),
+});
+
+export type PersistenceStatus = z.infer<typeof PersistenceStatusSchema>;
+
 export const AgentResultSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('success'),
     event: DecisionEventSchema,
+    persistence_status: PersistenceStatusSchema,
   }),
   z.object({
     status: z.literal('error'),

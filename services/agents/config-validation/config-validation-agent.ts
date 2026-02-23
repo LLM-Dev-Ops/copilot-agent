@@ -132,8 +132,16 @@ export class ConfigValidationAgent implements BaseAgent<ConfigValidationInput, C
         executionRef
       );
 
-      // Persist via ruvector-service ONLY
-      await this.persistence.store(event);
+      // Persist via ruvector-service (best-effort, non-blocking)
+      let persistence_status: { status: 'persisted' | 'skipped'; error?: string };
+      try {
+        await this.persistence.store(event);
+        persistence_status = { status: 'persisted' };
+      } catch (persistError) {
+        const persistMessage = persistError instanceof Error ? persistError.message : 'Unknown persistence error';
+        console.error(`[${AGENT_ID}] RuVector persistence failed (non-blocking): ${persistMessage}`);
+        persistence_status = { status: 'skipped', error: persistMessage };
+      }
 
       // Emit telemetry success
       this.telemetry.recordSuccess(AGENT_ID, executionRef, Date.now() - startTime);
@@ -141,6 +149,7 @@ export class ConfigValidationAgent implements BaseAgent<ConfigValidationInput, C
       return {
         status: 'success',
         event,
+        persistence_status,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -291,7 +300,7 @@ export class ConfigValidationAgent implements BaseAgent<ConfigValidationInput, C
       }
     }
 
-    // Check property types
+    // Check property types and recurse into nested objects
     if (properties) {
       for (const [propName, propSchema] of Object.entries(properties)) {
         const value = config[propName];
@@ -308,6 +317,19 @@ export class ConfigValidationAgent implements BaseAgent<ConfigValidationInput, C
               expected: propSchema.type,
               tags: ['schema', 'type'],
             });
+          }
+
+          // Recurse into nested objects
+          if (actualType === 'object' && !Array.isArray(value)) {
+            const nestedSchema = propSchema as unknown as Record<string, unknown>;
+            if (nestedSchema.properties || nestedSchema.required) {
+              this.validateAgainstSchema(
+                value as Record<string, unknown>,
+                nestedSchema,
+                `${path}.${propName}`,
+                findings
+              );
+            }
           }
         }
       }

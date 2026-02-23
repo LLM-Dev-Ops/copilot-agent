@@ -176,7 +176,7 @@ describe('DecomposerAgent', () => {
   });
 
   describe('Error Handling', () => {
-    it('should return error result for persistence failure', async () => {
+    it('should return success with skipped persistence_status on persistence failure', async () => {
       const badPersistence = {
         store: jest.fn().mockRejectedValue(new Error('Persistence failed')),
       } as unknown as RuvectorPersistence;
@@ -187,14 +187,15 @@ describe('DecomposerAgent', () => {
         '550e8400-e29b-41d4-a716-446655440004'
       );
 
-      expect(result.status).toBe('error');
-      if (result.status === 'error') {
-        expect(result.error_code).toBeDefined();
-        expect(result.error_message).toContain('Persistence');
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.persistence_status.status).toBe('skipped');
+        expect(result.persistence_status.error).toContain('Persistence failed');
+        expect(result.event).toBeDefined();
       }
     });
 
-    it('should emit failure telemetry on error', async () => {
+    it('should emit success telemetry even on persistence failure', async () => {
       const badPersistence = {
         store: jest.fn().mockRejectedValue(new Error('Test error')),
       } as unknown as RuvectorPersistence;
@@ -202,7 +203,7 @@ describe('DecomposerAgent', () => {
       const errorAgent = new DecomposerAgent(badPersistence, mockTelemetry);
       await errorAgent.invoke({ objective: 'Test' }, '550e8400-e29b-41d4-a716-446655440005');
 
-      expect(mockTelemetry.recordFailure).toHaveBeenCalled();
+      expect(mockTelemetry.recordSuccess).toHaveBeenCalled();
     });
   });
 

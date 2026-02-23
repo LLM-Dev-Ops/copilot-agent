@@ -70,6 +70,8 @@ describe('MetaReasonerAgent', () => {
         detect_contradictions: true,
         assess_confidence_calibration: true,
         identify_systemic_issues: true,
+        detect_fallacies: false,
+        check_completeness: false,
       },
       ...overrides,
     };
@@ -621,73 +623,29 @@ describe('MetaReasonerAgent', () => {
   });
 
   describe('Error Handling', () => {
-    it('should return error result for persistence failure', async () => {
-      const failingPersistence = {
-        store: jest.fn().mockRejectedValue(new Error('RuVector persistence failed')),
-        retrieve: jest.fn(),
-        search: jest.fn(),
-      } as unknown as RuvectorPersistence;
+    it('should return success with skipped persistence_status on persistence failure', async () => {
+      // Use the same mock persistence as the working success tests,
+      // but override store to fail
+      mockPersistence.store.mockRejectedValueOnce(new Error('RuVector persistence failed'));
 
-      const failingAgent = new MetaReasonerAgent(failingPersistence, mockTelemetry);
       const input = createValidInput();
+      const result = await agent.invoke(input, executionRef);
 
-      const result = await failingAgent.invoke(input, executionRef);
-
-      expect(result.status).toBe('error');
-      if (result.status === 'error') {
-        expect(result.error_code).toBe('AGENT_PERSISTENCE_ERROR');
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.persistence_status.status).toBe('skipped');
+        expect(result.persistence_status.error).toContain('RuVector persistence failed');
+        expect(result.event).toBeDefined();
       }
     });
 
-    it('should emit telemetry on failure', async () => {
-      const failingPersistence = {
-        store: jest.fn().mockRejectedValue(new Error('persistence error')),
-        retrieve: jest.fn(),
-        search: jest.fn(),
-      } as unknown as RuvectorPersistence;
+    it('should emit success telemetry even on persistence failure', async () => {
+      mockPersistence.store.mockRejectedValueOnce(new Error('persistence error'));
 
-      const failingAgent = new MetaReasonerAgent(failingPersistence, mockTelemetry);
       const input = createValidInput();
+      await agent.invoke(input, executionRef);
 
-      await failingAgent.invoke(input, executionRef);
-
-      expect(mockTelemetry.recordFailure).toHaveBeenCalled();
-    });
-
-    it('should include execution_ref in error result', async () => {
-      const failingPersistence = {
-        store: jest.fn().mockRejectedValue(new Error('persistence error')),
-        retrieve: jest.fn(),
-        search: jest.fn(),
-      } as unknown as RuvectorPersistence;
-
-      const failingAgent = new MetaReasonerAgent(failingPersistence, mockTelemetry);
-      const input = createValidInput();
-
-      const result = await failingAgent.invoke(input, executionRef);
-
-      if (result.status === 'error') {
-        expect(result.execution_ref).toBe(executionRef);
-      }
-    });
-
-    it('should include timestamp in error result', async () => {
-      const failingPersistence = {
-        store: jest.fn().mockRejectedValue(new Error('persistence error')),
-        retrieve: jest.fn(),
-        search: jest.fn(),
-      } as unknown as RuvectorPersistence;
-
-      const failingAgent = new MetaReasonerAgent(failingPersistence, mockTelemetry);
-      const input = createValidInput();
-
-      const result = await failingAgent.invoke(input, executionRef);
-
-      if (result.status === 'error') {
-        expect(result.timestamp).toBeTruthy();
-        // Should be valid ISO timestamp
-        expect(() => new Date(result.timestamp)).not.toThrow();
-      }
+      expect(mockTelemetry.recordSuccess).toHaveBeenCalled();
     });
   });
 

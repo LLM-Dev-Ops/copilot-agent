@@ -419,55 +419,41 @@ describe('IntentClassifierAgent', () => {
   // 6. ERROR HANDLING TESTS
   // ═══════════════════════════════════════════════════════════════
   describe('Error Handling', () => {
-    it('should return error result on persistence failure', async () => {
+    it('should return success with skipped persistence_status on persistence failure', async () => {
       mockPersistence.store.mockRejectedValueOnce(new Error('RuVector connection failed'));
 
       const input: IntentClassifierInput = { text: 'Test persistence error' };
       const result = await agent.invoke(input, executionRef);
 
-      expect(result.status).toBe('error');
-      if (result.status === 'error') {
-        expect(result.error_code).toBe('AGENT_PERSISTENCE_ERROR');
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.persistence_status.status).toBe('skipped');
+        expect(result.persistence_status.error).toContain('RuVector connection failed');
+        expect(result.event).toBeDefined();
       }
     });
 
-    it('should emit telemetry failure on error', async () => {
+    it('should emit success telemetry even on persistence failure', async () => {
       mockPersistence.store.mockRejectedValueOnce(new Error('Storage failed'));
 
       const input: IntentClassifierInput = { text: 'Test telemetry failure' };
       await agent.invoke(input, executionRef);
 
-      expect(mockTelemetry.recordFailure).toHaveBeenCalledWith(
+      expect(mockTelemetry.recordSuccess).toHaveBeenCalledWith(
         'intent-classifier-agent',
         executionRef,
-        expect.any(String),
-        expect.any(String)
+        expect.any(Number)
       );
     });
 
-    it('should include execution_ref in error result', async () => {
-      mockPersistence.store.mockRejectedValueOnce(new Error('Error'));
-
-      const input: IntentClassifierInput = { text: 'Test error ref' };
+    it('should include persisted status on successful persistence', async () => {
+      const input: IntentClassifierInput = { text: 'Test persisted status' };
       const result = await agent.invoke(input, executionRef);
 
-      if (result.status === 'error') {
-        expect(result.execution_ref).toBe(executionRef);
-      } else {
-        fail('Expected error status');
-      }
-    });
-
-    it('should include timestamp in error result', async () => {
-      mockPersistence.store.mockRejectedValueOnce(new Error('Error'));
-
-      const input: IntentClassifierInput = { text: 'Test timestamp' };
-      const result = await agent.invoke(input, executionRef);
-
-      if (result.status === 'error') {
-        expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-      } else {
-        fail('Expected error status');
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.persistence_status.status).toBe('persisted');
+        expect(result.persistence_status.error).toBeUndefined();
       }
     });
   });
