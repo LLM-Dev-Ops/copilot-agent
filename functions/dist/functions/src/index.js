@@ -111,6 +111,15 @@ async function handler(req, res) {
     }
     // Agent routes: POST /v1/copilot/{agent}
     if (req.method === 'POST' && pathname.startsWith('/v1/copilot/')) {
+        // Require end-user Anthropic API key via header
+        const anthropicApiKey = req.headers['x-anthropic-api-key'];
+        if (!anthropicApiKey) {
+            const layers = [
+                { layer: 'AGENT_ROUTING', status: 'error' },
+            ];
+            sendJson(res, 400, (0, envelope_1.wrapResponse)({ error: 'Missing Anthropic API key. Set it via `agentics login` or the ANTHROPIC_API_KEY environment variable.' }, executionMetadata, layers));
+            return;
+        }
         const agentSlug = pathname.replace('/v1/copilot/', '').replace(/\/$/, '');
         const body = parseBody(req);
         if (!body || typeof body !== 'object') {

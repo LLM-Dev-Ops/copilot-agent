@@ -58,6 +58,17 @@ export type AgentMetadata = z.infer<typeof AgentMetadataSchema>;
 /**
  * Agent Invocation Result - wraps DecisionEvent with status
  */
+export declare const PersistenceStatusSchema: z.ZodObject<{
+    status: z.ZodEnum<["persisted", "skipped"]>;
+    error: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    status: "persisted" | "skipped";
+    error?: string | undefined;
+}, {
+    status: "persisted" | "skipped";
+    error?: string | undefined;
+}>;
+export type PersistenceStatus = z.infer<typeof PersistenceStatusSchema>;
 export declare const AgentResultSchema: z.ZodDiscriminatedUnion<"status", [z.ZodObject<{
     status: z.ZodLiteral<"success">;
     event: z.ZodObject<{
@@ -91,6 +102,16 @@ export declare const AgentResultSchema: z.ZodDiscriminatedUnion<"status", [z.Zod
         timestamp: string;
         outputs?: unknown;
     }>;
+    persistence_status: z.ZodObject<{
+        status: z.ZodEnum<["persisted", "skipped"]>;
+        error: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        status: "persisted" | "skipped";
+        error?: string | undefined;
+    }, {
+        status: "persisted" | "skipped";
+        error?: string | undefined;
+    }>;
 }, "strip", z.ZodTypeAny, {
     status: "success";
     event: {
@@ -104,6 +125,10 @@ export declare const AgentResultSchema: z.ZodDiscriminatedUnion<"status", [z.Zod
         timestamp: string;
         outputs?: unknown;
     };
+    persistence_status: {
+        status: "persisted" | "skipped";
+        error?: string | undefined;
+    };
 }, {
     status: "success";
     event: {
@@ -116,6 +141,10 @@ export declare const AgentResultSchema: z.ZodDiscriminatedUnion<"status", [z.Zod
         execution_ref: string;
         timestamp: string;
         outputs?: unknown;
+    };
+    persistence_status: {
+        status: "persisted" | "skipped";
+        error?: string | undefined;
     };
 }>, z.ZodObject<{
     status: z.ZodLiteral<"error">;

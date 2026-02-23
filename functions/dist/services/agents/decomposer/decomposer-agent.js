@@ -168,13 +168,23 @@ class DecomposerAgent {
             const constraintsApplied = this.getAppliedConstraints(input);
             // Create the DecisionEvent
             const event = (0, contracts_1.createDecisionEvent)(AGENT_ID, AGENT_VERSION, DECISION_TYPE, input, combinedOutput, confidence, constraintsApplied, executionRef);
-            // Persist via ruvector-service ONLY
-            await this.persistence.store(event);
+            // Persist via ruvector-service (best-effort, non-blocking)
+            let persistence_status;
+            try {
+                await this.persistence.store(event);
+                persistence_status = { status: 'persisted' };
+            }
+            catch (persistError) {
+                const persistMessage = persistError instanceof Error ? persistError.message : 'Unknown persistence error';
+                console.error(`[${AGENT_ID}] RuVector persistence failed (non-blocking): ${persistMessage}`);
+                persistence_status = { status: 'skipped', error: persistMessage };
+            }
             // Emit telemetry success
             this.telemetry.recordSuccess(AGENT_ID, executionRef, Date.now() - startTime);
             return {
                 status: 'success',
                 event,
+                persistence_status,
             };
         }
         catch (error) {

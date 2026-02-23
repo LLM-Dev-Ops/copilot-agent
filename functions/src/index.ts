@@ -104,6 +104,20 @@ export async function handler(req: CfRequest, res: CfResponse): Promise<void> {
 
   // Agent routes: POST /v1/copilot/{agent}
   if (req.method === 'POST' && pathname.startsWith('/v1/copilot/')) {
+    // Require end-user Anthropic API key via header
+    const anthropicApiKey = req.headers['x-anthropic-api-key'] as string | undefined;
+    if (!anthropicApiKey) {
+      const layers: LayerExecuted[] = [
+        { layer: 'AGENT_ROUTING', status: 'error' },
+      ];
+      sendJson(res, 400, wrapResponse(
+        { error: 'Missing Anthropic API key. Set it via `agentics login` or the ANTHROPIC_API_KEY environment variable.' },
+        executionMetadata,
+        layers
+      ));
+      return;
+    }
+
     const agentSlug = pathname.replace('/v1/copilot/', '').replace(/\/$/, '');
     const body = parseBody(req);
 

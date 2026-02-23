@@ -5,7 +5,7 @@
  * No inline schemas. No inferred schemas. No dynamic schema mutation.
  */
 export { DecisionEventSchema, type DecisionEvent, hashInputs, createDecisionEvent, } from './decision-event';
-export { AgentClassification, type AgentClassificationType, AgentMetadataSchema, type AgentMetadata, AgentResultSchema, type AgentResult, type BaseAgent, AgentErrorCodes, type AgentErrorCode, createErrorResult, } from './base-agent';
+export { AgentClassification, type AgentClassificationType, AgentMetadataSchema, type AgentMetadata, AgentResultSchema, type AgentResult, PersistenceStatusSchema, type PersistenceStatus, type BaseAgent, AgentErrorCodes, type AgentErrorCode, createErrorResult, } from './base-agent';
 export { PlannerInputSchema, type PlannerInput, PlannerOutputSchema, type PlannerOutput, PlanStepSchema, type PlanStep, DependencySchema, type Dependency, } from './planner-schemas';
 export { ReflectionInputSchema, type ReflectionInput, ReflectionOutputSchema, type ReflectionOutput, QualitySignalSchema, type QualitySignal, LearningSignalSchema, type LearningSignal, GapAnalysisSchema, type GapAnalysis, OutcomeEvaluationSchema, type OutcomeEvaluation, } from './reflection-schemas';
 export { ReasoningTraceSchema, type ReasoningTrace, MetaReasonerInputSchema, type MetaReasonerInput, MetaReasonerOutputSchema, type MetaReasonerOutput, ContradictionSchema, type Contradiction, ConfidenceCalibrationSchema, type ConfidenceCalibration, SystemicIssueSchema, type SystemicIssue, ReasoningQualityMetricsSchema, type ReasoningQualityMetrics, } from './meta-reasoner-schemas';

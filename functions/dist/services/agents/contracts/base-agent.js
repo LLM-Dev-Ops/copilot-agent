@@ -14,7 +14,7 @@
  * - NEVER intercept execution paths
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AgentErrorCodes = exports.AgentResultSchema = exports.AgentMetadataSchema = exports.AgentClassification = void 0;
+exports.AgentErrorCodes = exports.AgentResultSchema = exports.PersistenceStatusSchema = exports.AgentMetadataSchema = exports.AgentClassification = void 0;
 exports.createErrorResult = createErrorResult;
 const zod_1 = require("zod");
 const decision_event_1 = require("./decision-event");
@@ -47,10 +47,15 @@ exports.AgentMetadataSchema = zod_1.z.object({
 /**
  * Agent Invocation Result - wraps DecisionEvent with status
  */
+exports.PersistenceStatusSchema = zod_1.z.object({
+    status: zod_1.z.enum(['persisted', 'skipped']),
+    error: zod_1.z.string().optional(),
+});
 exports.AgentResultSchema = zod_1.z.discriminatedUnion('status', [
     zod_1.z.object({
         status: zod_1.z.literal('success'),
         event: decision_event_1.DecisionEventSchema,
+        persistence_status: exports.PersistenceStatusSchema,
     }),
     zod_1.z.object({
         status: zod_1.z.literal('error'),
