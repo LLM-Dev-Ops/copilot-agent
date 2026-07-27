@@ -30,10 +30,10 @@ LLM-CoPilot-Agent is a comprehensive AI platform that serves as both a conversat
 - **Tool/Function Calling** - Extensible tool framework with validation and execution
 - **RAG Pipeline** - Document ingestion, chunking strategies, vector search, and generation
 
-### Compliance & Governance (Phase 5)
-- **SOC 2 Type II** - Control management, audits, findings, evidence collection
-- **HIPAA Compliance** - PHI access logging, BAA management, breach reporting
-- **Data Residency** - Policy enforcement, regional data controls, transfer workflows
+### Compliance & Governance (Design Stage)
+- **SOC 2 control mapping and evidence-collection design (no audit performed)** - see [`deployment/compliance/soc2-evidence-collection.yaml`](deployment/compliance/soc2-evidence-collection.yaml)
+- **HIPAA-oriented control catalog covering §164.308/310/312 (design stage, not operational)**
+- **Data residency policy model (design stage)**
 - **Content Filtering** - Safety filters, PII detection, moderation integration
 - **Usage Policies** - Policy evaluation, enforcement modes, violation tracking
 - **Audit Trail** - Comprehensive event logging, anomaly detection, retention
@@ -205,22 +205,24 @@ Enterprise AI/ML platform providing model management, agent orchestration, and R
 
 ### Compliance Service (Port 3009)
 
-Enterprise compliance management for SOC 2, HIPAA, and data residency requirements.
+Design-stage compliance service for SOC 2 control mapping, HIPAA safeguard cataloguing, and data residency policy modelling. Not deployed; see [`docs/adr/ADR-0001-compliance-claims-remediation.md`](docs/adr/ADR-0001-compliance-claims-remediation.md).
 
-| Feature | Description |
-|---------|-------------|
-| **Control Management** | SOC 2 controls with status tracking and evidence |
-| **Audit Management** | Schedule audits, track findings, generate reports |
-| **HIPAA Compliance** | PHI access logging, BAA management, breach reporting |
-| **Data Residency** | Regional policies, asset tracking, transfer workflows |
-| **Compliance Reports** | Gap analysis, risk assessment, audit readiness |
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Control Management** | SOC 2 controls with status tracking and evidence | Design |
+| **Audit Management** | Schedule audits, track findings, generate reports | Design |
+| **HIPAA Compliance** | PHI access logging, breach reporting | Design |
+| **Data Residency** | Regional policies, asset tracking, transfer workflows | Design |
+| **Compliance Reports** | Gap analysis, risk assessment, audit readiness | Design |
+
+> **Note:** The compliance service is not currently deployed in any environment. It appears in no `docker-compose.yml`, Kubernetes, or Helm manifest, and the database tables it queries are not yet created by any migration.
 
 **Endpoints:**
 - `GET/POST /api/v1/compliance/controls` - Control management
 - `GET/POST /api/v1/compliance/audits` - Audit management
 - `GET/POST /api/v1/compliance/findings` - Finding tracking
 - `POST /api/v1/hipaa/phi-access` - PHI access logging
-- `GET/POST /api/v1/hipaa/baa` - BAA management
+- `GET/POST /api/v1/hipaa/baa` - BAA registry records, design stage (tracking only; does not execute agreements)
 - `GET/POST /api/v1/data-residency/policies` - Residency policies
 - `POST /api/v1/data-residency/transfers` - Data transfers
 
@@ -467,17 +469,18 @@ CORS_ORIGIN=http://localhost:3000,https://your-domain.com
 | Phase 2 | Complete | Multi-tenancy & Auth |
 | Phase 3 | Complete | Advanced Features |
 | Phase 4 | Complete | Enterprise Operations |
-| Phase 5 | Complete | AI/ML Platform & Compliance |
+| Phase 5 | Complete | AI/ML Platform |
+| Phase 5 | Design Complete, Implementation In Progress | Compliance |
 | Phase 6 | Planned | Scale & Advanced Analytics |
 
-## Security & Compliance
+## Security
 
-- **SOC 2 Type II** - Comprehensive control framework
-- **HIPAA** - PHI protection and access logging
-- **GDPR** - Data residency and privacy controls
 - **Content Safety** - Multi-layer content filtering
 - **Audit Trail** - Complete activity logging
-- **Encryption** - At-rest and in-transit encryption
+- **Encryption** - At-rest and in-transit encryption (see `deployment/terraform/main.tf:243,298-299,340-344`)
+
+For the project's compliance posture — including why SOC 2 Type II, HIPAA, and GDPR are
+not claimed here — see [`docs/adr/ADR-0001-compliance-claims-remediation.md`](docs/adr/ADR-0001-compliance-claims-remediation.md).
 
 ## Contributing
 

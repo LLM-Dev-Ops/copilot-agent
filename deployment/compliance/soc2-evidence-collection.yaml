@@ -1,5 +1,8 @@
 # SOC 2 Type II Evidence Collection Procedures
 # Automated evidence gathering for compliance audit
+#
+# Status: Design Specification -- no audit performed.
+# See docs/adr/ADR-0001-compliance-claims-remediation.md
 
 evidenceCollection:
 
@@ -27,7 +30,7 @@ evidenceCollection:
 
           manual:
             - type: "Authentication Policy Document"
-              path: "docs/policies/authentication-policy.md"
+              path: "docs/policies/authentication-policy.md"  # TODO: artifact does not yet exist
               reviewFrequency: "Quarterly"
 
       - id: "CC6.1.2"
@@ -40,7 +43,7 @@ evidenceCollection:
 
             - type: "Session Timeout Settings"
               source: "Application code"
-              path: "services/auth/session.ts"
+              path: "services/auth/session.ts"  # TODO: artifact does not yet exist
 
   # CC6.2 - New User Provisioning
   CC6_2:
@@ -50,10 +53,10 @@ evidenceCollection:
         evidence:
           manual:
             - type: "Provisioning Procedure"
-              path: "docs/procedures/user-provisioning.md"
+              path: "docs/procedures/user-provisioning.md"  # TODO: artifact does not yet exist
 
             - type: "Background Check Records"
-              path: "hr/background-checks/"
+              path: "hr/background-checks/"  # TODO: artifact does not yet exist
               storage: "Secure HR system"
 
           automated:
@@ -71,7 +74,7 @@ evidenceCollection:
           automated:
             - type: "Password Policy Configuration"
               source: "Application code"
-              path: "services/auth/password-policy.ts"
+              path: "services/auth/password-policy.ts"  # TODO: artifact does not yet exist
 
             - type: "Password Change Audit"
               source: "Audit logs"
@@ -89,7 +92,7 @@ evidenceCollection:
 
           manual:
             - type: "Access Review Approval"
-              path: "compliance/access-reviews/"
+              path: "compliance/access-reviews/"  # TODO: artifact does not yet exist
               format: "PDF with manager signatures"
 
   # CC6.6 - Encryption
@@ -169,7 +172,7 @@ evidenceCollection:
 
             - type: "Backup Storage Verification"
               source: "AWS S3"
-              path: "s3://llm-copilot-backups/"
+              path: "s3://llm-copilot-backups/"  # TODO: artifact does not yet exist
               schedule: "Daily"
 
       - id: "CC7.3.2"
@@ -177,7 +180,7 @@ evidenceCollection:
         evidence:
           manual:
             - type: "DR Test Results"
-              path: "compliance/dr-tests/"
+              path: "compliance/dr-tests/"  # TODO: artifact does not yet exist
               schedule: "Quarterly"
               requiredSignoff: "CTO"
 
@@ -213,7 +216,7 @@ evidenceCollection:
 
             - type: "Test Coverage Reports"
               source: "Jest/Coverage"
-              path: "coverage/"
+              path: "coverage/"  # TODO: artifact does not yet exist
               schedule: "Per commit"
 
   # CC9.2 - Business Continuity
@@ -236,7 +239,7 @@ evidenceCollection:
         evidence:
           manual:
             - type: "Failover Test Report"
-              path: "compliance/failover-tests/"
+              path: "compliance/failover-tests/"  # TODO: artifact does not yet exist
               schedule: "Quarterly"
 
 # Automated Evidence Collection Scripts
