@@ -293,7 +293,11 @@ export class ComplianceService {
       [
         audit.id, audit.name, audit.framework, audit.type, audit.status,
         JSON.stringify(audit.scope), JSON.stringify(audit.auditor),
-        JSON.stringify(audit.schedule), JSON.stringify(audit.findings),
+        // findings is TEXT[], not JSONB: the UPDATE at :439 uses array_append, which
+        // requires a real array type. node-pg serializes a JS array to an array literal,
+        // whereas JSON.stringify([]) produces '[]', which Postgres rejects with
+        // "malformed array literal".
+        JSON.stringify(audit.schedule), audit.findings,
         JSON.stringify(audit.metadata), audit.createdAt, audit.updatedAt, userId,
       ]
     );

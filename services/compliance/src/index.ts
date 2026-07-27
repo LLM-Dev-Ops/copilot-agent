@@ -17,6 +17,8 @@ import { ComplianceService } from './services/complianceService';
 import { HIPAAService } from './services/hipaaService';
 import { DataResidencyService } from './services/dataResidencyService';
 import { executionContextMiddleware } from '../../ai-platform/src/middleware/executionContext';
+import { authenticate, authenticateUserOrInternal, configureAuth } from './middleware/auth';
+import { loadSecrets } from './config/env';
 
 // Configuration
 const config = {
@@ -78,7 +80,209 @@ function requestLogger(req: Request, _res: Response, next: NextFunction): void {
   next();
 }
 
+/**
+ * Builds the Express app.
+ *
+ * Extracted from main() so tests can exercise the real middleware chain -- in
+ * particular the authentication mounted at /api/v1/* -- with supertest, without
+ * binding a port or connecting to Redis. ADR-0002 Verification 4 enumerates this
+ * app's router stack to prove no route ships unguarded.
+ */
+export interface ComplianceDeps {
+  db: Pool;
+  redis: Pick<RedisClientType, 'ping'>;
+  complianceService: ComplianceService;
+  hipaaService: HIPAAService;
+  dataResidencyService: DataResidencyService;
+}
+
+export function createApp(deps: ComplianceDeps): Express {
+  const { db, redis, complianceService, hipaaService, dataResidencyService } = deps;
+
+// Create Express app
+const app: Express = express();
+
+// Apply middleware
+app.use(helmet({
+  contentSecurityPolicy: config.nodeEnv === 'production',
+}));
+app.use(cors(config.cors));
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
+
+// Health check routes
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({
+    status: 'healthy',
+    service: 'compliance',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/health/detailed', async (_req: Request, res: Response) => {
+  const checks: Record<string, { status: string; latency?: number; error?: string }> = {};
+
+  // Check database
+  try {
+    const startDb = Date.now();
+    await db.query('SELECT 1');
+    checks.database = {
+      status: 'healthy',
+      latency: Date.now() - startDb,
+    };
+  } catch (error) {
+    checks.database = {
+      status: 'unhealthy',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+
+  // Check Redis
+  try {
+    const startRedis = Date.now();
+    await redis.ping();
+    checks.redis = {
+      status: 'healthy',
+      latency: Date.now() - startRedis,
+    };
+  } catch (error) {
+    checks.redis = {
+      status: 'unhealthy',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+
+  const overallStatus = Object.values(checks).every(c => c.status === 'healthy')
+    ? 'healthy'
+    : 'degraded';
+
+  res.status(overallStatus === 'healthy' ? 200 : 503).json({
+    status: overallStatus,
+    service: 'compliance',
+    version: process.env.npm_package_version || '1.0.0',
+    timestamp: new Date().toISOString(),
+    checks,
+  });
+});
+
+// Mount routes behind authentication, then execution-context span tracking.
+//
+// ORDER MATTERS: `authenticate` runs BEFORE executionContextMiddleware. The latter
+// rejects requests missing X-Parent-Span-Id with 400, so mounting it first would make
+// an unauthenticated request return 400 instead of 401, and would do span work on
+// behalf of an unauthenticated caller. Authenticate first, then trace.
+//
+// Per-route authorization (compliance-auditor / compliance-officer) is applied inside
+// each router, next to the handler it guards.
+app.use('/api/v1/compliance', authenticate, executionContextMiddleware, createComplianceRoutes(complianceService));
+// /hipaa accepts the internal service key in addition to a user JWT, because
+// POST /hipaa/phi-access doubles as out-of-process ingestion. Every other route in
+// that router carries `requireUser` or `authorize(...)`, both of which reject a
+// principal-less internal caller, so the wider door opens onto exactly one endpoint.
+app.use('/api/v1/hipaa', authenticateUserOrInternal, executionContextMiddleware, createHIPAARoutes(hipaaService));
+app.use('/api/v1/data-residency', authenticate, executionContextMiddleware, createDataResidencyRoutes(dataResidencyService));
+
+// Root endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.json({
+    service: 'compliance',
+    version: '1.0.0',
+    description: 'Enterprise Compliance Platform',
+    features: [
+      'SOC 2 Type I/II compliance management',
+      'HIPAA compliance and PHI access logging',
+      'Data residency policy enforcement',
+      'Audit management and findings tracking',
+      'Compliance reporting and dashboards',
+    ],
+    endpoints: {
+      health: '/health',
+      compliance: '/api/v1/compliance',
+      hipaa: '/api/v1/hipaa',
+      dataResidency: '/api/v1/data-residency',
+    },
+  });
+});
+
+// API documentation endpoint
+app.get('/api/v1', (_req: Request, res: Response) => {
+  res.json({
+    version: 'v1',
+    modules: {
+      compliance: {
+        base: '/api/v1/compliance',
+        endpoints: [
+          { method: 'GET', path: '/controls', description: 'List compliance controls' },
+          { method: 'POST', path: '/controls', description: 'Create control' },
+          { method: 'GET', path: '/controls/:controlId', description: 'Get control' },
+          { method: 'PATCH', path: '/controls/:controlId/status', description: 'Update control status' },
+          { method: 'POST', path: '/controls/:controlId/test', description: 'Record control test' },
+          { method: 'GET', path: '/audits', description: 'List audits' },
+          { method: 'POST', path: '/audits', description: 'Create audit' },
+          { method: 'GET', path: '/findings', description: 'List findings' },
+          { method: 'POST', path: '/findings', description: 'Create finding' },
+          { method: 'POST', path: '/reports', description: 'Generate compliance report' },
+          { method: 'GET', path: '/dashboard', description: 'Get dashboard metrics' },
+        ],
+      },
+      hipaa: {
+        base: '/api/v1/hipaa',
+        endpoints: [
+          { method: 'POST', path: '/phi-access', description: 'Log PHI access' },
+          { method: 'GET', path: '/phi-access', description: 'Get PHI access logs' },
+          { method: 'POST', path: '/phi-access/report', description: 'Generate access report' },
+          { method: 'GET', path: '/baa', description: 'List BAAs' },
+          { method: 'POST', path: '/baa', description: 'Create BAA' },
+          { method: 'GET', path: '/requirements', description: 'Get HIPAA requirements' },
+          { method: 'GET', path: '/assessment', description: 'Assess HIPAA compliance' },
+          { method: 'POST', path: '/breaches', description: 'Report a breach' },
+        ],
+      },
+      dataResidency: {
+        base: '/api/v1/data-residency',
+        endpoints: [
+          { method: 'GET', path: '/policies', description: 'List data residency policies' },
+          { method: 'POST', path: '/policies', description: 'Create policy' },
+          { method: 'GET', path: '/assets', description: 'List data assets' },
+          { method: 'POST', path: '/assets', description: 'Register data asset' },
+          { method: 'GET', path: '/assets/:assetId/compliance', description: 'Check asset compliance' },
+          { method: 'GET', path: '/transfers', description: 'List transfer requests' },
+          { method: 'POST', path: '/transfers', description: 'Request data transfer' },
+          { method: 'POST', path: '/transfers/:requestId/approve', description: 'Approve transfer' },
+          { method: 'GET', path: '/report', description: 'Generate data residency report' },
+        ],
+      },
+    },
+  });
+});
+
+// 404 handler
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({
+    error: {
+      message: 'Not Found',
+      code: 'NOT_FOUND',
+    },
+  });
+});
+
+// Error handler
+app.use(errorHandler);
+
+  return app;
+}
+
 async function main(): Promise<void> {
+  // Resolve secrets FIRST, before opening any connection or binding any port.
+  // loadSecrets() throws when NODE_ENV=production and HIPAA_ENCRYPTION_KEY,
+  // HIPAA_PSEUDONYM_SALT, or JWT_SECRET is unset. main() is wrapped in a .catch that
+  // exits non-zero, so a misconfigured deploy fails its healthcheck and rolls back
+  // rather than silently pseudonymizing PHI under a key published in this repository.
+  const secrets = loadSecrets();
+  configureAuth(secrets);
+
   // Initialize database connection
   const db = new Pool(config.database);
 
@@ -108,168 +312,10 @@ async function main(): Promise<void> {
 
   // Initialize services
   const complianceService = new ComplianceService(db, redis);
-  const hipaaService = new HIPAAService(db, redis);
+  const hipaaService = new HIPAAService(db, redis, secrets);
   const dataResidencyService = new DataResidencyService(db, redis);
 
-  // Create Express app
-  const app: Express = express();
-
-  // Apply middleware
-  app.use(helmet({
-    contentSecurityPolicy: config.nodeEnv === 'production',
-  }));
-  app.use(cors(config.cors));
-  app.use(compression());
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true }));
-  app.use(requestLogger);
-
-  // Health check routes
-  app.get('/health', (_req: Request, res: Response) => {
-    res.json({
-      status: 'healthy',
-      service: 'compliance',
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  app.get('/health/detailed', async (_req: Request, res: Response) => {
-    const checks: Record<string, { status: string; latency?: number; error?: string }> = {};
-
-    // Check database
-    try {
-      const startDb = Date.now();
-      await db.query('SELECT 1');
-      checks.database = {
-        status: 'healthy',
-        latency: Date.now() - startDb,
-      };
-    } catch (error) {
-      checks.database = {
-        status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-
-    // Check Redis
-    try {
-      const startRedis = Date.now();
-      await redis.ping();
-      checks.redis = {
-        status: 'healthy',
-        latency: Date.now() - startRedis,
-      };
-    } catch (error) {
-      checks.redis = {
-        status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-
-    const overallStatus = Object.values(checks).every(c => c.status === 'healthy')
-      ? 'healthy'
-      : 'degraded';
-
-    res.status(overallStatus === 'healthy' ? 200 : 503).json({
-      status: overallStatus,
-      service: 'compliance',
-      version: process.env.npm_package_version || '1.0.0',
-      timestamp: new Date().toISOString(),
-      checks,
-    });
-  });
-
-  // Mount routes with execution context middleware for span tracking
-  app.use('/api/v1/compliance', executionContextMiddleware, createComplianceRoutes(complianceService));
-  app.use('/api/v1/hipaa', executionContextMiddleware, createHIPAARoutes(hipaaService));
-  app.use('/api/v1/data-residency', executionContextMiddleware, createDataResidencyRoutes(dataResidencyService));
-
-  // Root endpoint
-  app.get('/', (_req: Request, res: Response) => {
-    res.json({
-      service: 'compliance',
-      version: '1.0.0',
-      description: 'Enterprise Compliance Platform',
-      features: [
-        'SOC 2 Type I/II compliance management',
-        'HIPAA compliance and PHI access logging',
-        'Data residency policy enforcement',
-        'Audit management and findings tracking',
-        'Compliance reporting and dashboards',
-      ],
-      endpoints: {
-        health: '/health',
-        compliance: '/api/v1/compliance',
-        hipaa: '/api/v1/hipaa',
-        dataResidency: '/api/v1/data-residency',
-      },
-    });
-  });
-
-  // API documentation endpoint
-  app.get('/api/v1', (_req: Request, res: Response) => {
-    res.json({
-      version: 'v1',
-      modules: {
-        compliance: {
-          base: '/api/v1/compliance',
-          endpoints: [
-            { method: 'GET', path: '/controls', description: 'List compliance controls' },
-            { method: 'POST', path: '/controls', description: 'Create control' },
-            { method: 'GET', path: '/controls/:controlId', description: 'Get control' },
-            { method: 'PATCH', path: '/controls/:controlId/status', description: 'Update control status' },
-            { method: 'POST', path: '/controls/:controlId/test', description: 'Record control test' },
-            { method: 'GET', path: '/audits', description: 'List audits' },
-            { method: 'POST', path: '/audits', description: 'Create audit' },
-            { method: 'GET', path: '/findings', description: 'List findings' },
-            { method: 'POST', path: '/findings', description: 'Create finding' },
-            { method: 'POST', path: '/reports', description: 'Generate compliance report' },
-            { method: 'GET', path: '/dashboard', description: 'Get dashboard metrics' },
-          ],
-        },
-        hipaa: {
-          base: '/api/v1/hipaa',
-          endpoints: [
-            { method: 'POST', path: '/phi-access', description: 'Log PHI access' },
-            { method: 'GET', path: '/phi-access', description: 'Get PHI access logs' },
-            { method: 'POST', path: '/phi-access/report', description: 'Generate access report' },
-            { method: 'GET', path: '/baa', description: 'List BAAs' },
-            { method: 'POST', path: '/baa', description: 'Create BAA' },
-            { method: 'GET', path: '/requirements', description: 'Get HIPAA requirements' },
-            { method: 'GET', path: '/assessment', description: 'Assess HIPAA compliance' },
-            { method: 'POST', path: '/breaches', description: 'Report a breach' },
-          ],
-        },
-        dataResidency: {
-          base: '/api/v1/data-residency',
-          endpoints: [
-            { method: 'GET', path: '/policies', description: 'List data residency policies' },
-            { method: 'POST', path: '/policies', description: 'Create policy' },
-            { method: 'GET', path: '/assets', description: 'List data assets' },
-            { method: 'POST', path: '/assets', description: 'Register data asset' },
-            { method: 'GET', path: '/assets/:assetId/compliance', description: 'Check asset compliance' },
-            { method: 'GET', path: '/transfers', description: 'List transfer requests' },
-            { method: 'POST', path: '/transfers', description: 'Request data transfer' },
-            { method: 'POST', path: '/transfers/:requestId/approve', description: 'Approve transfer' },
-            { method: 'GET', path: '/report', description: 'Generate data residency report' },
-          ],
-        },
-      },
-    });
-  });
-
-  // 404 handler
-  app.use((_req: Request, res: Response) => {
-    res.status(404).json({
-      error: {
-        message: 'Not Found',
-        code: 'NOT_FOUND',
-      },
-    });
-  });
-
-  // Error handler
-  app.use(errorHandler);
+  const app = createApp({ db, redis, complianceService, hipaaService, dataResidencyService });
 
   // Start server
   const server = app.listen(config.port, () => {

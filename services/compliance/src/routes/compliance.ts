@@ -4,7 +4,8 @@
  * API endpoints for compliance controls, audits, and findings.
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction } from 'express';
+import { AuthenticatedRequest } from '../middleware/auth';
 import { ComplianceService } from '../services/complianceService';
 import {
   ComplianceFramework,
@@ -25,7 +26,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * List controls
    */
-  router.get('/controls', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/controls', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { framework, category, status, owner } = req.query;
       const controls = await complianceService.listControls({
@@ -43,7 +44,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Get control by ID
    */
-  router.get('/controls/:controlId', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/controls/:controlId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const control = await complianceService.getControl(req.params.controlId);
       if (!control) {
@@ -58,9 +59,9 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Create control
    */
-  router.post('/controls', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/controls', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const control = await complianceService.createControl(req.body, userId);
       res.status(201).json({ control });
     } catch (error) {
@@ -71,7 +72,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Update control status
    */
-  router.patch('/controls/:controlId/status', async (req: Request, res: Response, next: NextFunction) => {
+  router.patch('/controls/:controlId/status', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { status, evidence } = req.body;
       if (!Object.values(ControlStatus).includes(status)) {
@@ -91,7 +92,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Record control test
    */
-  router.post('/controls/:controlId/test', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/controls/:controlId/test', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const control = await complianceService.recordControlTest(
         req.params.controlId,
@@ -110,7 +111,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * List audits
    */
-  router.get('/audits', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/audits', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { framework, status, type } = req.query;
       const audits = await complianceService.listAudits({
@@ -127,7 +128,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Get audit by ID
    */
-  router.get('/audits/:auditId', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/audits/:auditId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const audit = await complianceService.getAudit(req.params.auditId);
       if (!audit) {
@@ -142,9 +143,9 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Create audit
    */
-  router.post('/audits', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/audits', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const audit = await complianceService.createAudit(req.body, userId);
       res.status(201).json({ audit });
     } catch (error) {
@@ -155,7 +156,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Update audit status
    */
-  router.patch('/audits/:auditId/status', async (req: Request, res: Response, next: NextFunction) => {
+  router.patch('/audits/:auditId/status', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { status } = req.body;
       if (!Object.values(AuditStatus).includes(status)) {
@@ -175,7 +176,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * List findings
    */
-  router.get('/findings', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/findings', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { auditId, controlId, severity, status } = req.query;
       const findings = await complianceService.listFindings({
@@ -193,7 +194,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Get finding by ID
    */
-  router.get('/findings/:findingId', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/findings/:findingId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const finding = await complianceService.getFinding(req.params.findingId);
       if (!finding) {
@@ -208,9 +209,9 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Create finding
    */
-  router.post('/findings', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/findings', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const finding = await complianceService.createFinding(req.body, userId);
       res.status(201).json({ finding });
     } catch (error) {
@@ -221,9 +222,9 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Update finding status
    */
-  router.patch('/findings/:findingId/status', async (req: Request, res: Response, next: NextFunction) => {
+  router.patch('/findings/:findingId/status', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const { status, comment } = req.body;
       if (!Object.values(FindingStatus).includes(status)) {
         return res.status(400).json({ error: 'Invalid status' });
@@ -247,9 +248,9 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Generate compliance report
    */
-  router.post('/reports', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/reports', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const report = await complianceService.generateReport(req.body, userId);
       res.status(201).json({ report });
     } catch (error) {
@@ -260,7 +261,7 @@ export function createComplianceRoutes(complianceService: ComplianceService): Ro
   /**
    * Get dashboard metrics
    */
-  router.get('/dashboard', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/dashboard', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { framework } = req.query;
       const metrics = await complianceService.getDashboardMetrics(
