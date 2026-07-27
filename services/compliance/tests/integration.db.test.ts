@@ -13,6 +13,8 @@
 
 import { Pool } from 'pg';
 import { HIPAAService } from '../src/services/hipaaService';
+import { ComplianceService } from '../src/services/complianceService';
+import { ComplianceFramework } from '../src/models/compliance';
 import { PHIAccessContext } from '../src/data/phiRepository';
 import { loadSecrets } from '../src/config/env';
 
@@ -276,25 +278,87 @@ describeDb('PostgreSQL integration', () => {
   });
 
   /**
-   * Must run after the chain assertions above: it deliberately corrupts the chain.
-   * Without this test, the verifyChain assertion above could pass vacuously.
+   * Without this test the verifyChain assertion above could pass vacuously.
+   *
+   * The forgery is injected inside a transaction and rolled back. phi_access_logs is
+   * append-only -- the trigger rejects DELETE -- so a rollback is the only way to
+   * withdraw the row. Committing it would permanently break the chain and make every
+   * subsequent run of this suite against the same database fail.
    */
   it('DETECTS a forged entry whose hash does not match its contents', async () => {
     expect((await hipaa.phiRepository.verifyChain()).valid).toBe(true);
 
-    // A row inserted outside the repository, with a hash that does not cover its
-    // contents -- what an attacker with INSERT rights but no key would produce.
-    await db.query(
-      `INSERT INTO phi_access_logs
-         (id, user_id, patient_id, access_type, resource_type, resource_id,
-          access_granted, timestamp, prev_hash, entry_hash)
-       VALUES (gen_random_uuid(), $1, $2, 'view', 'Patient', 'forged', true, NOW(), NULL, $3)`,
-      [USERS[0], 'f'.repeat(64), 'b'.repeat(64)]
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+
+      // A row inserted outside the repository, with a hash that does not cover its
+      // contents -- what an attacker with INSERT rights but no key would produce.
+      await client.query(
+        `INSERT INTO phi_access_logs
+           (id, user_id, patient_id, access_type, resource_type, resource_id,
+            access_granted, timestamp, prev_hash, entry_hash)
+         VALUES (gen_random_uuid(), $1, $2, 'view', 'Patient', 'forged', true, NOW(), NULL, $3)`,
+        [USERS[0], 'f'.repeat(64), 'b'.repeat(64)]
+      );
+
+      const result = await hipaa.phiRepository.verifyChain(1000, client);
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBeDefined();
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+
+    // The chain is intact again, so this suite is re-runnable against the same database.
+    expect((await hipaa.phiRepository.verifyChain()).valid).toBe(true);
+  });
+
+  /**
+   * compliance_audits.findings is TEXT[] because the UPDATE at complianceService.ts:439
+   * uses array_append, which requires a real array type. The INSERT at :296 previously
+   * passed JSON.stringify(audit.findings), which yields '[]' and is rejected by Postgres
+   * with "malformed array literal". Both halves of that round trip are exercised here.
+   */
+  it('creates an audit and appends a finding through array_append', async () => {
+    const compliance = new ComplianceService(db, {
+      del: async () => 1,
+      get: async () => null,
+      setEx: async () => 'OK',
+    } as never);
+
+    const audit = await compliance.createAudit(
+      {
+        name: `Audit ${Date.now()}`,
+        framework: ComplianceFramework.HIPAA,
+        type: 'internal',
+        scope: { controls: ['164.308(a)(1)'], dateRange: { start: new Date(), end: new Date() } },
+        auditor: { name: 'Auditor' },
+        schedule: { plannedStart: new Date(), plannedEnd: new Date() },
+      },
+      USERS[0]
     );
 
-    const result = await hipaa.phiRepository.verifyChain();
-    expect(result.valid).toBe(false);
-    expect(result.brokenAt).toBeDefined();
+    // Insert succeeded and stored an empty array, not the string '[]'.
+    const created = await db.query(`SELECT findings FROM compliance_audits WHERE id = $1`, [audit.id]);
+    expect(created.rows[0].findings).toEqual([]);
+
+    // The array_append path the column type exists for.
+    await db.query(
+      `UPDATE compliance_audits SET findings = array_append(findings, $1) WHERE id = $2`,
+      ['finding-1', audit.id]
+    );
+    await db.query(
+      `UPDATE compliance_audits SET findings = array_append(findings, $1) WHERE id = $2`,
+      ['finding-2', audit.id]
+    );
+
+    const after = await db.query(`SELECT findings FROM compliance_audits WHERE id = $1`, [audit.id]);
+    expect(after.rows[0].findings).toEqual(['finding-1', 'finding-2']);
+
+    // And it reads back as a JS string[] via mapAuditRow (complianceService.ts:903).
+    const fetched = await compliance.getAudit(audit.id);
+    expect(fetched!.findings).toEqual(['finding-1', 'finding-2']);
   });
 
   it('runs the HIPAA assessment query against compliance_controls', async () => {

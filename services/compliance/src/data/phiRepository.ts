@@ -253,9 +253,16 @@ export class PHIRepository {
   /**
    * Verify the tamper-evidence chain. An UPDATE that slipped past the append-only
    * trigger would break the hash linkage and be detected here.
+   *
+   * `executor` allows verification inside an open transaction, so a caller can inspect
+   * uncommitted rows. Tests use it to inject a forged entry and roll it back -- the
+   * append-only trigger blocks DELETE, so a rollback is the only way to withdraw one.
    */
-  async verifyChain(limit = 1000): Promise<{ valid: boolean; brokenAt?: string; checked: number }> {
-    const result = await this.db.query(
+  async verifyChain(
+    limit = 1000,
+    executor: Pick<Pool, 'query'> = this.db
+  ): Promise<{ valid: boolean; brokenAt?: string; checked: number }> {
+    const result = await executor.query(
       `SELECT id, user_id, patient_id, access_type, resource_type, resource_id,
               access_granted, timestamp, prev_hash, entry_hash
        FROM phi_access_logs ORDER BY timestamp ASC, id ASC LIMIT $1`,
