@@ -304,11 +304,26 @@ jobs:
           name: documentation
           path: target/doc/
 
+  # ADR-0001: every compliance claim must be backed by an artifact.
+  # Pure-Python and dependency-free, so it needs no toolchain setup.
+  compliance-claims:
+    name: Compliance Claims Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check compliance claims are backed
+        run: python3 scripts/check_compliance_claims.py
+
+      - name: Check SOC 2 evidence paths resolve
+        run: python3 scripts/check_evidence_paths.py
+
   # Summary job
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [format, lint, security, test, integration, coverage]
+    needs: [format, lint, security, test, integration, coverage, compliance-claims]
     if: always()
     steps:
       - name: Check job results
@@ -318,7 +333,8 @@ jobs:
              [ "${{ needs.security.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.integration.result }}" != "success" ] || \
-             [ "${{ needs.coverage.result }}" != "success" ]; then
+             [ "${{ needs.coverage.result }}" != "success" ] || \
+             [ "${{ needs['compliance-claims'].result }}" != "success" ]; then
             echo "One or more required jobs failed"
             exit 1
           fi
