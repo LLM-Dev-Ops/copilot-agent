@@ -618,16 +618,22 @@ END $$;
 -- APPEND-ONLY GRANTS
 --
 -- Revoke mutation on phi_access_logs from the application role. The trigger above
--- is the real enforcement; this is defence in depth. Skipped silently if the role
--- does not exist, so the migration applies in environments (CI, local) that do not
--- provision it.
+-- is the real enforcement; this is defence in depth.
+--
+-- The role is `llm_copilot_app`, created by V001:432-438. V001 also issues a blanket
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES (V001:444) plus ALTER DEFAULT
+-- PRIVILEGES (V001:448), so without this block the application role would hold UPDATE
+-- and DELETE on the audit log by inheritance.
+--
+-- Guarded by IF EXISTS so the migration still applies in environments that do not
+-- provision the role.
 -- ============================================================================
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
-        REVOKE UPDATE, DELETE, TRUNCATE ON phi_access_logs FROM app_user;
-        GRANT SELECT, INSERT ON phi_access_logs TO app_user;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'llm_copilot_app') THEN
+        REVOKE UPDATE, DELETE, TRUNCATE ON phi_access_logs FROM llm_copilot_app;
+        GRANT SELECT, INSERT ON phi_access_logs TO llm_copilot_app;
     END IF;
 END $$;
 

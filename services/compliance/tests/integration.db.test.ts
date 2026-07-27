@@ -176,6 +176,38 @@ describeDb('PostgreSQL integration', () => {
     expect(after.rows[0].n).toBe(before.rows[0].n);
   });
 
+  /**
+   * Defence in depth: the trigger above stops mutation for everyone, but the
+   * application role should not hold the privilege in the first place.
+   *
+   * V001:444 issues a blanket GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES to
+   * llm_copilot_app, so without V002's REVOKE the app role would inherit UPDATE and
+   * DELETE on the audit log. Skipped where the role is not provisioned.
+   */
+  it('revokes UPDATE/DELETE on phi_access_logs from the application role', async () => {
+    const role = await db.query(`SELECT 1 FROM pg_roles WHERE rolname = 'llm_copilot_app'`);
+    if (role.rows.length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn('[skip] llm_copilot_app role not provisioned in this database');
+      return;
+    }
+
+    const priv = await db.query(
+      `SELECT has_table_privilege('llm_copilot_app','phi_access_logs','SELECT') AS sel,
+              has_table_privilege('llm_copilot_app','phi_access_logs','INSERT') AS ins,
+              has_table_privilege('llm_copilot_app','phi_access_logs','UPDATE') AS upd,
+              has_table_privilege('llm_copilot_app','phi_access_logs','DELETE') AS del,
+              has_table_privilege('llm_copilot_app','audit_logs','UPDATE') AS control`
+    );
+
+    expect(priv.rows[0].sel).toBe(true);
+    expect(priv.rows[0].ins).toBe(true);
+    expect(priv.rows[0].upd).toBe(false);
+    expect(priv.rows[0].del).toBe(false);
+    // Control: the revoke is specific to phi_access_logs, not a blanket loss of rights.
+    expect(priv.rows[0].control).toBe(true);
+  });
+
   // -------------------------------------------------------------------------
   // Tamper evidence
   // -------------------------------------------------------------------------
