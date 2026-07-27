@@ -4,7 +4,8 @@
  * API endpoints for data residency policies, assets, and transfers.
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction } from 'express';
+import { AuthenticatedRequest } from '../middleware/auth';
 import { DataResidencyService } from '../services/dataResidencyService';
 import { DataClassification, DataRegion } from '../models/compliance';
 
@@ -18,7 +19,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * List policies
    */
-  router.get('/policies', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/policies', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { classification, status, region } = req.query;
       const policies = await dataResidencyService.listPolicies({
@@ -35,7 +36,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Get policy by ID
    */
-  router.get('/policies/:policyId', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/policies/:policyId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const policy = await dataResidencyService.getPolicy(req.params.policyId);
       if (!policy) {
@@ -50,9 +51,9 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Create policy
    */
-  router.post('/policies', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/policies', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const policy = await dataResidencyService.createPolicy(req.body, userId);
       res.status(201).json({ policy });
     } catch (error) {
@@ -63,7 +64,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Activate policy
    */
-  router.post('/policies/:policyId/activate', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/policies/:policyId/activate', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const policy = await dataResidencyService.activatePolicy(req.params.policyId);
       res.json({ policy });
@@ -79,7 +80,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * List data assets
    */
-  router.get('/assets', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/assets', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { classification, region, type } = req.query;
       const assets = await dataResidencyService.listDataAssets({
@@ -96,7 +97,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Get data asset by ID
    */
-  router.get('/assets/:assetId', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/assets/:assetId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const asset = await dataResidencyService.getDataAsset(req.params.assetId);
       if (!asset) {
@@ -111,9 +112,9 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Register data asset
    */
-  router.post('/assets', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/assets', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const asset = await dataResidencyService.registerDataAsset(req.body, userId);
       res.status(201).json({ asset });
     } catch (error) {
@@ -124,7 +125,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Check asset compliance
    */
-  router.get('/assets/:assetId/compliance', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/assets/:assetId/compliance', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const compliance = await dataResidencyService.checkAssetCompliance(req.params.assetId);
       res.json(compliance);
@@ -140,7 +141,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * List transfer requests
    */
-  router.get('/transfers', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const { assetId, status, sourceRegion, targetRegion } = req.query;
       const transfers = await dataResidencyService.listTransferRequests({
@@ -158,7 +159,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Get transfer request by ID
    */
-  router.get('/transfers/:requestId', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/transfers/:requestId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const request = await dataResidencyService.getTransferRequest(req.params.requestId);
       if (!request) {
@@ -173,9 +174,9 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Request data transfer
    */
-  router.post('/transfers', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/transfers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id || 'system';
+      const userId = req.user!.userId;
       const { assetId, targetRegion, purpose, transferMechanism, dpaReference } = req.body;
 
       if (!assetId || !targetRegion || !purpose) {
@@ -201,9 +202,9 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Approve transfer request
    */
-  router.post('/transfers/:requestId/approve', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/transfers/:requestId/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const approverId = (req as any).user?.id || 'system';
+      const approverId = req.user!.userId;
       const { notes } = req.body;
       const request = await dataResidencyService.approveTransferRequest(
         req.params.requestId,
@@ -219,7 +220,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Execute approved transfer
    */
-  router.post('/transfers/:requestId/execute', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/transfers/:requestId/execute', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const request = await dataResidencyService.executeTransfer(req.params.requestId);
       res.json({ request });
@@ -235,7 +236,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Generate data residency report
    */
-  router.get('/report', async (_req: Request, res: Response, next: NextFunction) => {
+  router.get('/report', async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const report = await dataResidencyService.generateReport();
       res.json(report);
@@ -247,7 +248,7 @@ export function createDataResidencyRoutes(dataResidencyService: DataResidencySer
   /**
    * Get available regions
    */
-  router.get('/regions', (_req: Request, res: Response) => {
+  router.get('/regions', (_req: AuthenticatedRequest, res: Response) => {
     res.json({
       regions: Object.values(DataRegion),
       classifications: Object.values(DataClassification),

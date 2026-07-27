@@ -15,6 +15,8 @@ import {
   HIPAASafeguard,
   CreateBAAInput,
 } from '../models/compliance';
+import { PHIRepository, PHIAccessContext } from '../data/phiRepository';
+import { ComplianceSecrets, loadSecrets } from '../config/env';
 
 interface PHIAccessLogInput {
   userId: string;
@@ -41,15 +43,27 @@ interface HIPAAControlRequirement {
 export class HIPAAService {
   private db: Pool;
   private redis: RedisClientType;
-  private encryptionKey: Buffer;
+  private pseudonymKey: Buffer;
+  private keyVersion: number;
+  private phi: PHIRepository;
 
-  constructor(db: Pool, redis: RedisClientType) {
+  constructor(db: Pool, redis: RedisClientType, secrets: ComplianceSecrets = loadSecrets()) {
     this.db = db;
     this.redis = redis;
 
-    // Initialize encryption key for PHI pseudonymization
-    const key = process.env.HIPAA_ENCRYPTION_KEY || 'default-key-change-in-production';
-    this.encryptionKey = crypto.scryptSync(key, 'salt', 32);
+    // Key material is resolved by config/env.ts, which throws in production when
+    // HIPAA_ENCRYPTION_KEY or HIPAA_PSEUDONYM_SALT is unset. There is deliberately no
+    // default here: the previous hardcoded fallback key meant a misconfigured deploy
+    // pseudonymized PHI under a key published in this repository.
+    this.pseudonymKey = secrets.pseudonymKey;
+    this.keyVersion = secrets.keyVersion;
+
+    this.phi = new PHIRepository(db, value => this.pseudonymize(value), this.keyVersion);
+  }
+
+  /** The PHI data-access layer. All ePHI reads and writes must route through this. */
+  get phiRepository(): PHIRepository {
+    return this.phi;
   }
 
   // ===========================================
@@ -60,37 +74,24 @@ export class HIPAAService {
    * Log PHI access event
    */
   async logPHIAccess(input: PHIAccessLogInput): Promise<PHIAccessLog> {
-    // Pseudonymize patient ID if present
-    const pseudonymizedPatientId = input.patientId
-      ? this.pseudonymize(input.patientId)
-      : undefined;
-
-    const log: PHIAccessLog = {
-      id: uuidv4(),
+    // Delegates to the data-access layer, which pseudonymizes, chains the tamper-evidence
+    // hash, and performs the only INSERT into phi_access_logs. userId travels as context,
+    // not as a record field, so there is nothing here for a caller to forge.
+    const ctx: PHIAccessContext = {
       userId: input.userId,
-      patientId: pseudonymizedPatientId,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      purpose: input.purpose,
+    };
+
+    const log = await this.phi.recordAccess(ctx, {
+      patientId: input.patientId,
       accessType: input.accessType,
       resourceType: input.resourceType,
       resourceId: input.resourceId,
-      purpose: input.purpose,
       accessGranted: input.accessGranted,
-      ipAddress: input.ipAddress,
-      userAgent: input.userAgent,
-      timestamp: new Date(),
       metadata: input.metadata,
-    };
-
-    await this.db.query(
-      `INSERT INTO phi_access_logs (
-        id, user_id, patient_id, access_type, resource_type, resource_id,
-        purpose, access_granted, ip_address, user_agent, timestamp, metadata
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-      [
-        log.id, log.userId, log.patientId, log.accessType, log.resourceType,
-        log.resourceId, log.purpose, log.accessGranted, log.ipAddress,
-        log.userAgent, log.timestamp, JSON.stringify(log.metadata),
-      ]
-    );
+    });
 
     // Alert on suspicious access patterns
     await this.checkAccessPatterns(input);
@@ -101,51 +102,26 @@ export class HIPAAService {
   /**
    * Get PHI access logs
    */
-  async getPHIAccessLogs(filters: {
-    userId?: string;
-    patientId?: string;
-    accessType?: PHIAccessLog['accessType'];
-    startDate?: Date;
-    endDate?: Date;
-    limit?: number;
-  }): Promise<PHIAccessLog[]> {
-    let query = `SELECT * FROM phi_access_logs WHERE 1=1`;
-    const values: unknown[] = [];
-    let paramIndex = 1;
-
-    if (filters.userId) {
-      query += ` AND user_id = $${paramIndex++}`;
-      values.push(filters.userId);
+  async getPHIAccessLogs(
+    ctx: PHIAccessContext,
+    filters: {
+      userId?: string;
+      patientId?: string;
+      accessType?: PHIAccessLog['accessType'];
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
     }
-    if (filters.patientId) {
-      // Pseudonymize for lookup
-      query += ` AND patient_id = $${paramIndex++}`;
-      values.push(this.pseudonymize(filters.patientId));
-    }
-    if (filters.accessType) {
-      query += ` AND access_type = $${paramIndex++}`;
-      values.push(filters.accessType);
-    }
-    if (filters.startDate) {
-      query += ` AND timestamp >= $${paramIndex++}`;
-      values.push(filters.startDate);
-    }
-    if (filters.endDate) {
-      query += ` AND timestamp <= $${paramIndex++}`;
-      values.push(filters.endDate);
-    }
-
-    query += ` ORDER BY timestamp DESC LIMIT $${paramIndex}`;
-    values.push(filters.limit || 100);
-
-    const result = await this.db.query(query, values);
-    return result.rows.map(this.mapPHIAccessLogRow);
+  ): Promise<PHIAccessLog[]> {
+    // Routed through the data-access layer, which records this read as a disclosure
+    // event before returning rows. Reading the PHI access log is itself a disclosure.
+    return this.phi.queryAccessLogs(ctx, filters);
   }
 
   /**
    * Generate PHI access report for auditing
    */
-  async generateAccessReport(options: {
+  async generateAccessReport(ctx: PHIAccessContext, options: {
     startDate: Date;
     endDate: Date;
     patientId?: string;
@@ -160,7 +136,7 @@ export class HIPAAService {
     };
     details: PHIAccessLog[];
   }> {
-    const logs = await this.getPHIAccessLogs({
+    const logs = await this.getPHIAccessLogs(ctx, {
       startDate: options.startDate,
       endDate: options.endDate,
       patientId: options.patientId,
@@ -743,14 +719,22 @@ export class HIPAAService {
   // ===========================================
 
   /**
-   * Pseudonymize a value
+   * Pseudonymize a patient identifier.
+   *
+   * Keyed HMAC-SHA256: deterministic for a given input, non-reversible, and correct
+   * under equality filtering. The previous implementation generated a fresh random IV
+   * per call, so the same patientId encrypted differently every time -- the equality
+   * filter in queryAccessLogs could never match, and uniquePatients counted one
+   * distinct patient per access event, making 45 CFR 164.528 disclosure accounting
+   * structurally impossible.
+   *
+   * HMAC rather than a bare digest because patient ID spaces are small and structured:
+   * an unkeyed SHA-256 is brute-forceable from a rainbow table. The key acts as a pepper.
+   *
+   * Output is a fixed 64-char hex string, matching phi_access_logs.patient_id CHAR(64).
    */
-  private pseudonymize(value: string): string {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', this.encryptionKey, iv);
-    let encrypted = cipher.update(value, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted;
+  pseudonymize(value: string): string {
+    return crypto.createHmac('sha256', this.pseudonymKey).update(value, 'utf8').digest('hex');
   }
 
   /**
@@ -773,23 +757,6 @@ export class HIPAAService {
     if (alert.severity === 'critical' || alert.severity === 'high') {
       await this.redis.publish('security-alerts', JSON.stringify(alert));
     }
-  }
-
-  private mapPHIAccessLogRow(row: Record<string, unknown>): PHIAccessLog {
-    return {
-      id: row.id as string,
-      userId: row.user_id as string,
-      patientId: row.patient_id as string | undefined,
-      accessType: row.access_type as PHIAccessLog['accessType'],
-      resourceType: row.resource_type as string,
-      resourceId: row.resource_id as string,
-      purpose: row.purpose as string | undefined,
-      accessGranted: row.access_granted as boolean,
-      ipAddress: row.ip_address as string | undefined,
-      userAgent: row.user_agent as string | undefined,
-      timestamp: row.timestamp as Date,
-      metadata: row.metadata as Record<string, unknown>,
-    };
   }
 
   private mapBAARow(row: Record<string, unknown>): BusinessAssociateAgreement {
