@@ -304,6 +304,27 @@ jobs:
           name: documentation
           path: target/doc/
 
+  # ADR-0001: every compliance claim must be backed by an artifact.
+  # Pure-Python and dependency-free, so it needs no toolchain setup.
+  #
+  # Deliberately NOT in the ci-success needs list. This check is about documentation
+  # honesty and is independent of the Rust build; folding it into that umbrella would
+  # bury a green signal inside a job that is currently red for unrelated reasons it
+  # cannot influence. Read this job's own status instead, and make it a required check
+  # in branch protection if it should block merges.
+  compliance-claims:
+    name: Compliance Claims Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check compliance claims are backed
+        run: python3 scripts/check_compliance_claims.py
+
+      - name: Check SOC 2 evidence paths resolve
+        run: python3 scripts/check_evidence_paths.py
+
   # Summary job
   ci-success:
     name: CI Success

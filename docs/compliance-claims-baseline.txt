@@ -1,0 +1,23 @@
+# Pre-existing unbacked compliance claims, recorded by ADR-0001.
+#
+# These predate the ADR and live in documents its Phase 1 did not scope. They are
+# recorded here so scripts/check_compliance_claims.py can block NEW unbacked claims
+# without failing CI on the existing backlog. Entries are matched on file + exact
+# text, so editing a line surfaces it again as new.
+#
+# This file is a backlog, not an exemption list. Do NOT add entries by hand to
+# silence the check -- fix the claim instead. Draining it is ADR-0001 Phase 4 work.
+README.md::"framework": "soc2_type2",
+README.md::│  │  │  - Models     │  │  - SOC 2      │  │  - Filters    │            │   │
+docs/README.md::- Compliance (GDPR, SOC 2)
+docs/README.md::- [SOC 2 Compliance](https://www.aicpa.org/soc)
+docs/SPECIFICATION.md::- Ensure data privacy and compliance (SOC2, GDPR, HIPAA)
+docs/architecture/DATA_STORAGE_DELIVERABLES.md::- SOC 2 Type II certification
+docs/architecture/DATA_STORAGE_DELIVERABLES.md::Compliance: GDPR, SOC 2, HIPAA compatible
+docs/architecture/DELIVERABLES.md::- Compliance certification (SOC 2)
+docs/architecture/DELIVERABLES.md::- SOC 2 Type II: Certified
+docs/architecture/DELIVERABLES.md::- [SOC 2 Compliance Guide](https://www.aicpa.org/soc)
+docs/specification-summary.md::- SOC 2 Type II: Certified
+docs/specification-summary.md::16. Compliance certification (SOC 2)
+docs/specification.md::- SOC 2 Type II compliance
+docs/specification.md::soc2: Type II certified
