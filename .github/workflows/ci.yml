@@ -306,6 +306,12 @@ jobs:
 
   # ADR-0001: every compliance claim must be backed by an artifact.
   # Pure-Python and dependency-free, so it needs no toolchain setup.
+  #
+  # Deliberately NOT in the ci-success needs list. This check is about documentation
+  # honesty and is independent of the Rust build; folding it into that umbrella would
+  # bury a green signal inside a job that is currently red for unrelated reasons it
+  # cannot influence. Read this job's own status instead, and make it a required check
+  # in branch protection if it should block merges.
   compliance-claims:
     name: Compliance Claims Check
     runs-on: ubuntu-latest
@@ -323,7 +329,7 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [format, lint, security, test, integration, coverage, compliance-claims]
+    needs: [format, lint, security, test, integration, coverage]
     if: always()
     steps:
       - name: Check job results
@@ -333,8 +339,7 @@ jobs:
              [ "${{ needs.security.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.integration.result }}" != "success" ] || \
-             [ "${{ needs.coverage.result }}" != "success" ] || \
-             [ "${{ needs['compliance-claims'].result }}" != "success" ]; then
+             [ "${{ needs.coverage.result }}" != "success" ]; then
             echo "One or more required jobs failed"
             exit 1
           fi
