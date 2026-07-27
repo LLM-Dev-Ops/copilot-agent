@@ -155,19 +155,19 @@ llm-cost-ops = { git = "https://github.com/LLM-Dev-Ops/cost-ops", branch = "main
 llm-memory-graph = { git = "https://github.com/LLM-Dev-Ops/memory-graph", branch = "main" }
 
 # LLM-Orchestrator - Workflow orchestration engine
-llm-orchestrator = { git = "https://github.com/LLM-Dev-Ops/orchestrator", branch = "main" }
+llm-orchestrator-core = { git = "https://github.com/LLM-Dev-Ops/orchestrator", branch = "main" }
 
 # LLM-Observatory - Observability and monitoring platform
-llm-observatory = { git = "https://github.com/LLM-Dev-Ops/observatory", branch = "main" }
+llm-observatory-core = { git = "https://github.com/LLM-Dev-Ops/observatory", branch = "main" }
 
 # LLM-Sentinel - Anomaly detection and security monitoring
 llm-sentinel = { git = "https://github.com/LLM-Dev-Ops/sentinel", branch = "main" }
 
 # LLM-Shield - Security and protection platform
-llm-shield = { git = "https://github.com/LLM-Dev-Ops/shield", branch = "main" }
+llm-shield-core = { git = "https://github.com/LLM-Dev-Ops/shield", branch = "main" }
 
 # LLM-Connector-Hub - Unified LLM provider connectivity
-llm-connector-hub = { git = "https://github.com/LLM-Dev-Ops/connector-hub", branch = "main" }
+connector-hub-core = { git = "https://github.com/LLM-Dev-Ops/connector-hub", branch = "main" }
 
 # LLM-Data-Vault - Secure data storage and anonymization
 llm-data-vault = { git = "https://github.com/LLM-Dev-Ops/data-vault", branch = "main" }
@@ -176,19 +176,20 @@ llm-data-vault = { git = "https://github.com/LLM-Dev-Ops/data-vault", branch = "
 llm-policy-engine = { git = "https://github.com/LLM-Dev-Ops/policy-engine", branch = "main" }
 
 # LLM-Governance-Dashboard - Cost tracking and governance UI
-llm-governance-dashboard = { git = "https://github.com/LLM-Dev-Ops/governance-dashboard", branch = "main" }
+llm-governance-common = { git = "https://github.com/LLM-Dev-Ops/governance-dashboard", branch = "main" }
 
 # LLM-Auto-Optimizer - Automated optimization platform
-llm-auto-optimizer = { git = "https://github.com/LLM-Dev-Ops/auto-optimizer", branch = "main" }
+llm-optimizer = { git = "https://github.com/LLM-Dev-Ops/auto-optimizer", branch = "main" }
 
 # LLM-Analytics-Hub - Analytics and insights platform
 llm-analytics-hub = { git = "https://github.com/LLM-Dev-Ops/analytics-hub", branch = "main" }
 
 # LLM-Registry - Asset and model registry
-llm-registry = { git = "https://github.com/LLM-Dev-Ops/registry", branch = "main" }
+llm-registry-core = { git = "https://github.com/LLM-Dev-Ops/registry", branch = "main" }
 
-# LLM-Marketplace - Service marketplace (TypeScript primary, Rust components)
-llm-marketplace = { git = "https://github.com/LLM-Dev-Ops/marketplace", branch = "main" }
+# LLM-Marketplace - no dependency declared: the marketplace repo is a virtual
+# workspace whose only members are `consumption` (a service), `marketplace-benchmarks`,
+# and a vendored `llm-infra` fork. It exposes no library crate to depend on.
 
 # LLM-Research-Lab - Research and experimentation platform
 llm-research-lab = { git = "https://github.com/LLM-Dev-Ops/research-lab", branch = "main" }
