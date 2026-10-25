@@ -69,7 +69,7 @@ export async function handler(req: CfRequest, res: CfResponse): Promise<void> {
   const startTime = Date.now();
 
   // CORS headers on every response
-  setCorsHeaders(res);
+  setCorsHeaders(req, res);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -77,7 +77,7 @@ export async function handler(req: CfRequest, res: CfResponse): Promise<void> {
     return;
   }
 
-  const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
+  const url = new URL(req.url || '/', 'https://copilot.invalid');
   const pathname = url.pathname;
 
   // Build execution metadata
@@ -167,9 +167,8 @@ export async function handler(req: CfRequest, res: CfResponse): Promise<void> {
         { layer: 'AGENT_ROUTING', status: 'completed' },
         { layer: `COPILOT_${agentName}`, status: 'error', duration_ms: Date.now() - startTime },
       ];
-      const errorMessage = err instanceof Error ? err.message : 'Internal server error';
       sendJson(res, 500, wrapResponse(
-        { error: errorMessage },
+        { error: 'Internal server error' },
         executionMetadata,
         layers
       ));
