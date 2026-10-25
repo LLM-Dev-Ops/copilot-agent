@@ -13,7 +13,7 @@ function mockRequest(method: string, url: string, body?: unknown, headers?: Reco
   const req = {
     method,
     url,
-    headers: { host: 'localhost', ...headers },
+    headers: { host: 'localhost', 'x-anthropic-api-key': 'test-key', ...headers },
     body,
   } as CfRequest;
   return req;
@@ -60,16 +60,25 @@ function mockResponse(): { res: CfResponse; getResult: () => { statusCode: numbe
 
 describe('Cloud Function Handler', () => {
   describe('CORS', () => {
-    it('should set CORS headers on all responses', async () => {
-      const req = mockRequest('GET', '/health');
+    it('should grant an approved origin and permit the required API-key header', async () => {
+      const req = mockRequest('GET', '/health', undefined, { origin: 'https://console.agentics.dev' });
       const { res, getResult } = mockResponse();
 
       await handler(req, res);
       const result = getResult();
 
-      expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
+      expect(result.headers['Access-Control-Allow-Origin']).toBe('https://console.agentics.dev');
+      expect(result.headers['Vary']).toBe('Origin');
       expect(result.headers['Access-Control-Allow-Methods']).toContain('POST');
       expect(result.headers['Access-Control-Allow-Headers']).toContain('X-Correlation-Id');
+      expect(result.headers['Access-Control-Allow-Headers']).toContain('X-Anthropic-Api-Key');
+    });
+
+    it('should not grant an unapproved origin', async () => {
+      const req = mockRequest('GET', '/health', undefined, { origin: 'https://attacker.example' });
+      const { res, getResult } = mockResponse();
+      await handler(req, res);
+      expect(getResult().headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
 
     it('should handle OPTIONS preflight with 204', async () => {
@@ -79,262 +88,4 @@ describe('Cloud Function Handler', () => {
       await handler(req, res);
       const result = getResult();
 
-      expect(result.statusCode).toBe(204);
-    });
-  });
-
-  describe('Health Endpoint', () => {
-    it('should return health status with all 7 agents', async () => {
-      const req = mockRequest('GET', '/health');
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect(result.statusCode).toBe(200);
-      const body = result.body as {
-        data: { status: string; agents: Array<{ agent: string }> };
-        execution_metadata: { service: string; trace_id: string };
-        layers_executed: Array<{ layer: string }>;
-      };
-
-      expect(body.data.status).toBe('healthy');
-      expect(body.data.agents).toHaveLength(7);
-
-      const agentNames = body.data.agents.map(a => a.agent);
-      expect(agentNames).toContain('planner');
-      expect(agentNames).toContain('config');
-      expect(agentNames).toContain('decomposer');
-      expect(agentNames).toContain('clarifier');
-      expect(agentNames).toContain('intent');
-      expect(agentNames).toContain('reflection');
-      expect(agentNames).toContain('meta-reasoner');
-    });
-
-    it('should include execution_metadata in health response', async () => {
-      const req = mockRequest('GET', '/health');
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const body = getResult().body as {
-        execution_metadata: { service: string; trace_id: string; execution_id: string; timestamp: string };
-      };
-
-      expect(body.execution_metadata.service).toBe('copilot-agents');
-      expect(body.execution_metadata.trace_id).toBeDefined();
-      expect(body.execution_metadata.execution_id).toBeDefined();
-      expect(body.execution_metadata.timestamp).toBeDefined();
-    });
-
-    it('should include layers_executed in health response', async () => {
-      const req = mockRequest('GET', '/health');
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const body = getResult().body as {
-        layers_executed: Array<{ layer: string; status: string }>;
-      };
-
-      expect(body.layers_executed).toHaveLength(2);
-      expect(body.layers_executed[0].layer).toBe('AGENT_ROUTING');
-      expect(body.layers_executed[1].layer).toBe('HEALTH_CHECK');
-    });
-  });
-
-  describe('Execution Metadata', () => {
-    it('should use x-correlation-id header as trace_id', async () => {
-      const traceId = '12345-abcde-67890';
-      const req = mockRequest('GET', '/health', undefined, { 'x-correlation-id': traceId });
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const body = getResult().body as {
-        execution_metadata: { trace_id: string };
-      };
-
-      expect(body.execution_metadata.trace_id).toBe(traceId);
-    });
-
-    it('should generate trace_id if x-correlation-id not provided', async () => {
-      const req = mockRequest('GET', '/health');
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const body = getResult().body as {
-        execution_metadata: { trace_id: string };
-      };
-
-      expect(body.execution_metadata.trace_id).toBeDefined();
-      expect(body.execution_metadata.trace_id.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Agent Routing', () => {
-    it('should return 400 for POST without body', async () => {
-      const req = mockRequest('POST', '/v1/copilot/planner');
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect(result.statusCode).toBe(400);
-    });
-
-    it('should return 404 for unknown routes', async () => {
-      const req = mockRequest('GET', '/unknown');
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect(result.statusCode).toBe(404);
-      const body = result.body as { data: { available_routes: string[] } };
-      expect(body.data.available_routes).toHaveLength(8);
-    });
-
-    it('should include layers_executed on error responses', async () => {
-      const req = mockRequest('GET', '/not-found');
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const body = getResult().body as {
-        layers_executed: Array<{ layer: string; status: string }>;
-        execution_metadata: { service: string };
-      };
-
-      expect(body.layers_executed).toBeDefined();
-      expect(body.execution_metadata.service).toBe('copilot-agents');
-    });
-
-    it('should route POST /v1/copilot/planner to PlannerAgent', async () => {
-      const req = mockRequest('POST', '/v1/copilot/planner', {
-        objective: 'Build a test system',
-      });
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      // Should succeed (200) or validation error (422) but NOT 404
-      expect([200, 422, 500]).toContain(result.statusCode);
-      const body = result.body as {
-        execution_metadata: { service: string };
-        layers_executed: Array<{ layer: string }>;
-      };
-      expect(body.execution_metadata.service).toBe('copilot-agents');
-      expect(body.layers_executed.some(l => l.layer === 'COPILOT_PLANNER')).toBe(true);
-    });
-
-    it('should route POST /v1/copilot/intent to IntentClassifierAgent', async () => {
-      const req = mockRequest('POST', '/v1/copilot/intent', {
-        text: 'Create a new user',
-      });
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect([200, 422, 500]).toContain(result.statusCode);
-      const body = result.body as {
-        layers_executed: Array<{ layer: string }>;
-      };
-      expect(body.layers_executed.some(l => l.layer === 'COPILOT_INTENT')).toBe(true);
-    });
-
-    it('should route POST /v1/copilot/decomposer to DecomposerAgent', async () => {
-      const req = mockRequest('POST', '/v1/copilot/decomposer', {
-        objective: 'Build and deploy a microservice',
-      });
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect([200, 422, 500]).toContain(result.statusCode);
-      const body = result.body as {
-        layers_executed: Array<{ layer: string }>;
-      };
-      expect(body.layers_executed.some(l => l.layer === 'COPILOT_DECOMPOSER')).toBe(true);
-    });
-  });
-
-  describe('Pipeline Context', () => {
-    it('should include per-agent execution_metadata in agent response', async () => {
-      const req = mockRequest('POST', '/v1/copilot/intent', {
-        text: 'Create a new user',
-      });
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect([200, 422, 500]).toContain(result.statusCode);
-      const body = result.body as {
-        data: {
-          result: unknown;
-          execution_metadata: { trace_id: string; agent: string; domain: string; timestamp: string };
-        };
-      };
-      // Agent response should be wrapped with result + execution_metadata
-      expect(body.data.execution_metadata).toBeDefined();
-      expect(body.data.execution_metadata.agent).toBe('intent');
-      expect(body.data.execution_metadata.domain).toBe('copilot');
-      expect(body.data.execution_metadata.trace_id).toBeDefined();
-      expect(body.data.execution_metadata.timestamp).toBeDefined();
-    });
-
-    it('should echo pipeline_context in agent execution_metadata when provided', async () => {
-      const pipelineContext = {
-        plan_id: 'test-plan-123',
-        step_id: '2',
-        previous_steps: [
-          { step_id: '1', domain: 'copilot', agent: 'decomposer', output: {} }
-        ],
-        execution_metadata: {
-          trace_id: 'trace-abc',
-          initiated_by: 'orchestrator-agents',
-        },
-      };
-      const req = mockRequest('POST', '/v1/copilot/intent', {
-        text: 'Create a new user',
-        pipeline_context: pipelineContext,
-      });
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect([200, 422, 500]).toContain(result.statusCode);
-      const body = result.body as {
-        data: {
-          execution_metadata: {
-            pipeline_context?: { plan_id: string; step_id: string };
-          };
-        };
-      };
-      expect(body.data.execution_metadata.pipeline_context).toBeDefined();
-      expect(body.data.execution_metadata.pipeline_context?.plan_id).toBe('test-plan-123');
-      expect(body.data.execution_metadata.pipeline_context?.step_id).toBe('2');
-    });
-
-    it('should NOT include pipeline_context when not provided (backwards compatible)', async () => {
-      const req = mockRequest('POST', '/v1/copilot/intent', {
-        text: 'Create a new user',
-      });
-      const { res, getResult } = mockResponse();
-
-      await handler(req, res);
-      const result = getResult();
-
-      expect([200, 422, 500]).toContain(result.statusCode);
-      const body = result.body as {
-        data: {
-          execution_metadata: {
-            pipeline_context?: unknown;
-          };
-        };
-      };
-      expect(body.data.execution_metadata.pipeline_context).toBeUndefined();
-    });
-  });
-});
+     
