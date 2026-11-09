@@ -82,13 +82,13 @@ function sendJson(res, statusCode, data) {
 async function handler(req, res) {
     const startTime = Date.now();
     // CORS headers on every response
-    (0, cors_1.setCorsHeaders)(res);
+    (0, cors_1.setCorsHeaders)(req, res);
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         (0, cors_1.handlePreflight)(res);
         return;
     }
-    const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
+    const url = new URL(req.url || '/', 'https://copilot.invalid');
     const pathname = url.pathname;
     // Build execution metadata
     const traceId = req.headers['x-correlation-id'] || crypto.randomUUID();
@@ -131,15 +131,27 @@ async function handler(req, res) {
         }
         try {
             const routingLayerStart = Date.now();
-            const agentResult = await (0, router_1.routeRequest)(agentSlug, body);
+            const routeResult = await (0, router_1.routeRequest)(agentSlug, body);
             const routingDuration = Date.now() - routingLayerStart;
             const agentName = agentSlug.toUpperCase().replace(/-/g, '_');
             const layers = [
                 { layer: 'AGENT_ROUTING', status: 'completed' },
                 { layer: `COPILOT_${agentName}`, status: 'completed', duration_ms: routingDuration },
             ];
-            const statusCode = agentResult.status === 'success' ? 200 : 422;
-            sendJson(res, statusCode, (0, envelope_1.wrapResponse)(agentResult, executionMetadata, layers));
+            // Build per-agent execution_metadata
+            const agentMeta = {
+                trace_id: traceId,
+                agent: agentSlug,
+                domain: 'copilot',
+                timestamp: new Date().toISOString(),
+            };
+            if (routeResult.pipelineContext) {
+                agentMeta.pipeline_context = routeResult.pipelineContext;
+            }
+            // Wrap the agent result with per-agent execution_metadata
+            const wrappedResult = (0, envelope_1.wrapAgentResult)(routeResult.agentResult, agentMeta);
+            const statusCode = routeResult.agentResult.status === 'success' ? 200 : 422;
+            sendJson(res, statusCode, (0, envelope_1.wrapResponse)(wrappedResult, executionMetadata, layers));
             return;
         }
         catch (err) {
@@ -148,8 +160,7 @@ async function handler(req, res) {
                 { layer: 'AGENT_ROUTING', status: 'completed' },
                 { layer: `COPILOT_${agentName}`, status: 'error', duration_ms: Date.now() - startTime },
             ];
-            const errorMessage = err instanceof Error ? err.message : 'Internal server error';
-            sendJson(res, 500, (0, envelope_1.wrapResponse)({ error: errorMessage }, executionMetadata, layers));
+            sendJson(res, 500, (0, envelope_1.wrapResponse)({ error: 'Internal server error' }, executionMetadata, layers));
             return;
         }
     }
@@ -171,4 +182,3 @@ async function handler(req, res) {
         ],
     }, executionMetadata, layers));
 }
-//# sourceMappingURL=index.js.map

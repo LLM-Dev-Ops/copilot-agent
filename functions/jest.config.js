@@ -10,6 +10,7 @@ module.exports = {
     'intelligence-agent.test.ts',
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  moduleDirectories: ['node_modules', '<rootDir>/node_modules'],
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       diagnostics: false,

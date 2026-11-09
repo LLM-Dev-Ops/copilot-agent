@@ -13,7 +13,7 @@ function mockRequest(method: string, url: string, body?: unknown, headers?: Reco
   const req = {
     method,
     url,
-    headers: { host: 'localhost', ...headers },
+    headers: { host: 'localhost', 'x-anthropic-api-key': 'test-key', ...headers },
     body,
   } as CfRequest;
   return req;
@@ -60,16 +60,25 @@ function mockResponse(): { res: CfResponse; getResult: () => { statusCode: numbe
 
 describe('Cloud Function Handler', () => {
   describe('CORS', () => {
-    it('should set CORS headers on all responses', async () => {
-      const req = mockRequest('GET', '/health');
+    it('should grant an approved origin and permit the required API-key header', async () => {
+      const req = mockRequest('GET', '/health', undefined, { origin: 'https://console.agentics.dev' });
       const { res, getResult } = mockResponse();
 
       await handler(req, res);
       const result = getResult();
 
-      expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
+      expect(result.headers['Access-Control-Allow-Origin']).toBe('https://console.agentics.dev');
+      expect(result.headers['Vary']).toBe('Origin');
       expect(result.headers['Access-Control-Allow-Methods']).toContain('POST');
       expect(result.headers['Access-Control-Allow-Headers']).toContain('X-Correlation-Id');
+      expect(result.headers['Access-Control-Allow-Headers']).toContain('X-Anthropic-Api-Key');
+    });
+
+    it('should not grant an unapproved origin', async () => {
+      const req = mockRequest('GET', '/health', undefined, { origin: 'https://attacker.example' });
+      const { res, getResult } = mockResponse();
+      await handler(req, res);
+      expect(getResult().headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
 
     it('should handle OPTIONS preflight with 204', async () => {
@@ -170,6 +179,13 @@ describe('Cloud Function Handler', () => {
   });
 
   describe('Agent Routing', () => {
+    it('should reject requests without an Anthropic API key', async () => {
+      const req = mockRequest('POST', '/v1/copilot/planner', { objective: 'test' }, { 'x-anthropic-api-key': '' });
+      const { res, getResult } = mockResponse();
+      await handler(req, res);
+      expect(getResult().statusCode).toBe(400);
+    });
+
     it('should return 400 for POST without body', async () => {
       const req = mockRequest('POST', '/v1/copilot/planner');
       const { res, getResult } = mockResponse();
@@ -255,6 +271,17 @@ describe('Cloud Function Handler', () => {
         layers_executed: Array<{ layer: string }>;
       };
       expect(body.layers_executed.some(l => l.layer === 'COPILOT_DECOMPOSER')).toBe(true);
+    });
+
+    it('should not disclose internal routing errors', async () => {
+      const req = mockRequest('POST', '/v1/copilot/private-route-name', { objective: 'test' });
+      const { res, getResult } = mockResponse();
+      await handler(req, res);
+      const result = getResult();
+      const body = result.body as { data: { error: string } };
+      expect(result.statusCode).toBe(500);
+      expect(body.data.error).toBe('Internal server error');
+      expect(JSON.stringify(body)).not.toContain('private-route-name');
     });
   });
 
