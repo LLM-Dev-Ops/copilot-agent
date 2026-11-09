@@ -1,0 +1,874 @@
+{
+  "trials": [
+    {
+      "i": 0,
+      "revision": "b8311d758d7d52772bffaccc6fd90c3d3337297d",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": false,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": false,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "i": 0,
+      "revision": "3e09a999fb1500b6cfdad23b9e7a8761d9fbfea6",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": true,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": true,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "i": 1,
+      "revision": "3e09a999fb1500b6cfdad23b9e7a8761d9fbfea6",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": true,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": true,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "i": 1,
+      "revision": "b8311d758d7d52772bffaccc6fd90c3d3337297d",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": false,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": false,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "i": 2,
+      "revision": "b8311d758d7d52772bffaccc6fd90c3d3337297d",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": false,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": false,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "i": 2,
+      "revision": "3e09a999fb1500b6cfdad23b9e7a8761d9fbfea6",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": true,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": true,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      }
+    }
+  ],
+  "measurements": [
+    {
+      "revision": "b8311d758d7d52772bffaccc6fd90c3d3337297d",
+      "suite": "holdout",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": false,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": false,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      },
+      "score": {
+        "primary": 0.16666666666666666,
+        "itemWins": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          false
+        ],
+        "noopRate": 0,
+        "costPerWin": 0,
+        "regressed": true
+      }
+    },
+    {
+      "revision": "b8311d758d7d52772bffaccc6fd90c3d3337297d",
+      "suite": "anchors",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": false,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": false,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": false,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      },
+      "score": {
+        "primary": 1,
+        "itemWins": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "noopRate": 0,
+        "costPerWin": 0,
+        "regressed": true
+      }
+    },
+    {
+      "revision": "3e09a999fb1500b6cfdad23b9e7a8761d9fbfea6",
+      "suite": "holdout",
+      "report": {
+        "holdout": [
+          {
+            "name": "exact-trusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "untrusted-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "absent-origin",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "api-key-preflight",
+            "passed": true,
+            "status": 204
+          },
+          {
+            "name": "ignore-untrusted-host",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "sanitize-internal-error",
+            "passed": true,
+            "status": 500
+          }
+        ],
+        "anchors": [
+          {
+            "name": "health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "head-health",
+            "passed": true,
+            "status": 200
+          },
+          {
+            "name": "missing-api-key",
+            "passed": true,
+            "status": 400
+          },
+          {
+            "name": "not-found",
+            "passed": true,
+            "status": 404
+          },
+          {
+            "name": "trace-id",
+            "passed": true,
+            "status": 200
+          }
+        ]
+      },
+      "score": {
+        "primary": 1,
+        "itemWins": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "noopRate": 0,
+        "costPerWin": 0,
+        "regressed": true
+      }
+    }
+  ],
+  "result": {
+    "liftCurve": [
+      {
+        "generation": 0,
+        "primary": 0.16666666666666666,
+        "delta": 0,
+        "anchor": 1
+      }
+    ],
+    "promotions": [],
+    "lineage": {
+      "commits": {}
+    },
+    "replayBundle": {
+      "data_source": "LIVE_FUNCTIONS_FRAMEWORK_DEPLOYMENT_ENTRY",
+      "root_id": "root",
+      "chain": [
+        {
+          "id": "root",
+          "generation": 0,
+          "parents": [],
+          "mutation": null,
+          "primaryDelta": 0,
+          "anchorScore": 1,
+          "verdict": "ROOT",
+          "failureReasons": [],
+          "receipt": {
+            "payload": {
+              "kind": "root",
+              "root": "root"
+            },
+            "signature": "wszWEvBiwzBQLH+nH5VaTLmwMVylxQX+mdYxZyg9p6bV6k7LuRG3n7F+B45K7rGBuH7tpQ/DUFZEDmZ/WJvqAw==",
+            "publicKey": "MCowBQYDK2VwAyEA5UVEaUf0HSApcjoLuxZrZRJ3Veh0ZD2wsqSklJOyVjI=",
+            "alg": "ed25519"
+          },
+          "createdAt": "gen-0"
+        }
+      ],
+      "all_commits": [
+        {
+          "id": "root__revision_gen1",
+          "generation": 1,
+          "parents": [
+            "root"
+          ],
+          "mutation": {
+            "target": "revision",
+            "summary": "Deploy canonical security runtime and guard compiler parity",
+            "inverse": [
+              {
+                "path": "functions/lib/functions/src/index.js",
+                "parentBytes": "\"use strict\";\n/**\n * Cloud Function Entry Point: copilot-agents\n *\n * Unified HTTP handler for all 7 copilot agents.\n * Deploy: gcloud functions deploy copilot-agents --runtime nodejs20 --trigger-http\n *         --region us-central1 --project agentics-dev --entry-point handler\n *         --memory 512MB --timeout 120s --no-allow-unauthenticated\n *\n * Routes:\n *   POST /v1/copilot/planner       → Planner Agent\n *   POST /v1/copilot/config        → Config Validation Agent\n *   POST /v1/copilot/decomposer    → Decomposer Agent\n *   POST /v1/copilot/clarifier     → Objective Clarifier Agent\n *   POST /v1/copilot/intent        → Intent Classifier Agent\n *   POST /v1/copilot/reflection    → Reflection Agent\n *   POST /v1/copilot/meta-reasoner → Meta-Reasoner Agent\n *   GET  /health                    → Health check\n */\nvar __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    var desc = Object.getOwnPropertyDescriptor(m, k);\n    if (!desc || (\"get\" in desc ? !m.__esModule : desc.writable || desc.configurable)) {\n      desc = { enumerable: true, get: function() { return m[k]; } };\n    }\n    Object.defineProperty(o, k2, desc);\n}) : (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    o[k2] = m[k];\n}));\nvar __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {\n    Object.defineProperty(o, \"default\", { enumerable: true, value: v });\n}) : function(o, v) {\n    o[\"default\"] = v;\n});\nvar __importStar = (this && this.__importStar) || (function () {\n    var ownKeys = function(o) {\n        ownKeys = Object.getOwnPropertyNames || function (o) {\n            var ar = [];\n            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;\n            return ar;\n        };\n        return ownKeys(o);\n    };\n    return function (mod) {\n        if (mod && mod.__esModule) return mod;\n        var result = {};\n        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== \"default\") __createBinding(result, mod, k[i]);\n        __setModuleDefault(result, mod);\n        return result;\n    };\n})();\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.handler = handler;\nconst crypto = __importStar(require(\"crypto\"));\nconst router_1 = require(\"./router\");\nconst health_1 = require(\"./health\");\nconst cors_1 = require(\"./cors\");\nconst envelope_1 = require(\"./envelope\");\n/**\n * Parse JSON body from request\n */\nfunction parseBody(req) {\n    // Cloud Functions automatically parse JSON bodies into req.body\n    if (req.body !== undefined) {\n        return req.body;\n    }\n    return undefined;\n}\n/**\n * Send JSON response\n */\nfunction sendJson(res, statusCode, data) {\n    res.writeHead(statusCode, { 'Content-Type': 'application/json' });\n    res.end(JSON.stringify(data));\n}\n/**\n * Main Cloud Function handler\n *\n * Entry point name: handler\n */\nasync function handler(req, res) {\n    const startTime = Date.now();\n    // CORS headers on every response\n    (0, cors_1.setCorsHeaders)(res);\n    // Handle CORS preflight\n    if (req.method === 'OPTIONS') {\n        (0, cors_1.handlePreflight)(res);\n        return;\n    }\n    const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);\n    const pathname = url.pathname;\n    // Build execution metadata\n    const traceId = req.headers['x-correlation-id'] || crypto.randomUUID();\n    const executionId = crypto.randomUUID();\n    const executionMetadata = {\n        trace_id: traceId,\n        timestamp: new Date().toISOString(),\n        service: 'copilot-agents',\n        execution_id: executionId,\n    };\n    // Health endpoint\n    if (pathname === '/health' && (req.method === 'GET' || req.method === 'HEAD')) {\n        const healthResult = (0, health_1.handleHealth)();\n        const layers = [\n            { layer: 'AGENT_ROUTING', status: 'completed' },\n            { layer: 'HEALTH_CHECK', status: 'completed', duration_ms: Date.now() - startTime },\n        ];\n        sendJson(res, 200, (0, envelope_1.wrapResponse)(healthResult, executionMetadata, layers));\n        return;\n    }\n    // Agent routes: POST /v1/copilot/{agent}\n    if (req.method === 'POST' && pathname.startsWith('/v1/copilot/')) {\n        // Require end-user Anthropic API key via header\n        const anthropicApiKey = req.headers['x-anthropic-api-key'];\n        if (!anthropicApiKey) {\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'error' },\n            ];\n            sendJson(res, 400, (0, envelope_1.wrapResponse)({ error: 'Missing Anthropic API key. Set it via `agentics login` or the ANTHROPIC_API_KEY environment variable.' }, executionMetadata, layers));\n            return;\n        }\n        const agentSlug = pathname.replace('/v1/copilot/', '').replace(/\\/$/, '');\n        const body = parseBody(req);\n        if (!body || typeof body !== 'object') {\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'completed' },\n            ];\n            sendJson(res, 400, (0, envelope_1.wrapResponse)({ error: 'Request body must be a JSON object' }, executionMetadata, layers));\n            return;\n        }\n        try {\n            const routingLayerStart = Date.now();\n            const agentResult = await (0, router_1.routeRequest)(agentSlug, body);\n            const routingDuration = Date.now() - routingLayerStart;\n            const agentName = agentSlug.toUpperCase().replace(/-/g, '_');\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'completed' },\n                { layer: `COPILOT_${agentName}`, status: 'completed', duration_ms: routingDuration },\n            ];\n            const statusCode = agentResult.status === 'success' ? 200 : 422;\n            sendJson(res, statusCode, (0, envelope_1.wrapResponse)(agentResult, executionMetadata, layers));\n            return;\n        }\n        catch (err) {\n            const agentName = agentSlug.toUpperCase().replace(/-/g, '_');\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'completed' },\n                { layer: `COPILOT_${agentName}`, status: 'error', duration_ms: Date.now() - startTime },\n            ];\n            const errorMessage = err instanceof Error ? err.message : 'Internal server error';\n            sendJson(res, 500, (0, envelope_1.wrapResponse)({ error: errorMessage }, executionMetadata, layers));\n            return;\n        }\n    }\n    // 404 for unmatched routes\n    const layers = [\n        { layer: 'AGENT_ROUTING', status: 'error' },\n    ];\n    sendJson(res, 404, (0, envelope_1.wrapResponse)({\n        error: 'Not found',\n        available_routes: [\n            'POST /v1/copilot/planner',\n            'POST /v1/copilot/config',\n            'POST /v1/copilot/decomposer',\n            'POST /v1/copilot/clarifier',\n            'POST /v1/copilot/intent',\n            'POST /v1/copilot/reflection',\n            'POST /v1/copilot/meta-reasoner',\n            'GET /health',\n        ],\n    }, executionMetadata, layers));\n}\n//# sourceMappingURL=index.js.map",
+                "sha256": "04b8c0d33d8da6a050d50ea2d703f122766e2461498dd2e8a1cc708940db71b9"
+              },
+              {
+                "path": "functions/lib/functions/src/cors.js",
+                "parentBytes": "\"use strict\";\n/**\n * CORS Middleware for Cloud Functions\n *\n * Handles preflight requests and sets CORS headers on all responses.\n */\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.setCorsHeaders = setCorsHeaders;\nexports.handlePreflight = handlePreflight;\nconst ALLOWED_ORIGINS = [\n    'https://agentics.dev',\n    'https://console.agentics.dev',\n    'https://us-central1-agentics-dev.cloudfunctions.net',\n];\nconst ALLOWED_METHODS = 'GET, POST, OPTIONS';\nconst ALLOWED_HEADERS = 'Content-Type, Authorization, X-Correlation-Id, X-Request-Id';\nconst MAX_AGE = '3600';\n/**\n * Set CORS headers on the response\n */\nfunction setCorsHeaders(res) {\n    // Allow any origin for now (can be restricted via ALLOWED_ORIGINS in production)\n    res.setHeader('Access-Control-Allow-Origin', '*');\n    res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);\n    res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);\n    res.setHeader('Access-Control-Max-Age', MAX_AGE);\n}\n/**\n * Handle CORS preflight (OPTIONS) request\n */\nfunction handlePreflight(res) {\n    res.writeHead(204);\n    res.end();\n}\n//# sourceMappingURL=cors.js.map",
+                "sha256": "0e23146da9f3b496feed1b4892058e5f077a5628c7e40638ad9feaeef0edf37f"
+              },
+              {
+                "path": "functions/package.json",
+                "parentBytes": "{\n  \"name\": \"copilot-agents\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Cloud Function entry point for all 7 copilot agents\",\n  \"main\": \"index.js\",\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"gcp-build\": \"\",\n    \"start\": \"functions-framework --target=handler --source=.\",\n    \"dev\": \"ts-node src/index.ts\",\n    \"test\": \"jest --config jest.config.js\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"clean\": \"rm -rf dist\",\n    \"predeploy\": \"npm run clean && npm run build\"\n  },\n  \"keywords\": [\n    \"agentics\",\n    \"cloud-function\",\n    \"copilot-agents\"\n  ],\n  \"author\": \"Agentics\",\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@google-cloud/functions-framework\": \"^5.0.2\",\n    \"uuid\": \"^9.0.0\",\n    \"zod\": \"^3.22.0\"\n  },\n  \"devDependencies\": {\n    \"@types/jest\": \"^29.0.0\",\n    \"@types/node\": \"^20.0.0\",\n    \"@types/uuid\": \"^9.0.0\",\n    \"jest\": \"^29.0.0\",\n    \"ts-jest\": \"^29.0.0\",\n    \"ts-node\": \"^10.9.0\",\n    \"typescript\": \"^5.0.0\"\n  },\n  \"engines\": {\n    \"node\": \">=20.0.0\"\n  }\n}\n",
+                "sha256": "7ee90b68e3297bcaa41393023198a0e3783e8dad1cd31c36596bb777a6f68984"
+              },
+              {
+                "path": "functions/package-lock.json",
+                "absent": true
+              },
+              {
+                "path": "scripts/check-runtime-parity.cjs",
+                "absent": true
+              },
+              {
+                "path": ".github/workflows/function-runtime.yml",
+                "absent": true
+              }
+            ]
+          },
+          "primaryDelta": 0.8333333333333334,
+          "anchorScore": null,
+          "verdict": "REJECTED",
+          "failureReasons": [
+            "safety_regressed"
+          ],
+          "receipt": {
+            "payload": {
+              "kind": "candidate",
+              "id": "root__revision_gen1",
+              "target": "revision",
+              "verdict": "REJECTED",
+              "primaryDelta": 0.8333333333333334,
+              "baselineScore": {
+                "primary": 0.16666666666666666,
+                "itemWins": [
+                  false,
+                  false,
+                  false,
+                  false,
+                  true,
+                  false
+                ],
+                "noopRate": 0,
+                "costPerWin": 0,
+                "regressed": true
+              },
+              "candidateScore": {
+                "primary": 1,
+                "itemWins": [
+                  true,
+                  true,
+                  true,
+                  true,
+                  true,
+                  true
+                ],
+                "noopRate": 0,
+                "costPerWin": 0,
+                "regressed": true
+              },
+              "anchorScore": null,
+              "failureReasons": [
+                "safety_regressed"
+              ],
+              "parents": [
+                "root"
+              ],
+              "generation": 1
+            },
+            "signature": "6uyj8ki14cnMiTE5YAj9l7cnw4x9X0PNKeywmwiNj9WKfVmvHtOevqOTlsKfsGqW6aL9M7oyX83fYFPxe6nTDg==",
+            "publicKey": "MCowBQYDK2VwAyEA5UVEaUf0HSApcjoLuxZrZRJ3Veh0ZD2wsqSklJOyVjI=",
+            "alg": "ed25519"
+          },
+          "createdAt": "gen-1",
+          "baselineScore": {
+            "primary": 0.16666666666666666,
+            "itemWins": [
+              false,
+              false,
+              false,
+              false,
+              true,
+              false
+            ],
+            "noopRate": 0,
+            "costPerWin": 0,
+            "regressed": true
+          },
+          "candidateScore": {
+            "primary": 1,
+            "itemWins": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "noopRate": 0,
+            "costPerWin": 0,
+            "regressed": true
+          }
+        }
+      ],
+      "lift_curve": [
+        {
+          "generation": 0,
+          "primary": 0.16666666666666666,
+          "delta": 0,
+          "anchor": 1
+        }
+      ],
+      "gate_fingerprint": "c5942e7c9bf8f28fe7af47a6ec3887d11eeb3f8c8e8601cc6a7a54969ea0b981",
+      "verified_improvements": 0,
+      "anchor_surviving_improvements": 0,
+      "milestone_reached": false,
+      "created_at": "gen-1"
+    },
+    "generationsRun": 1,
+    "milestoneReached": false,
+    "finalPolicy": {
+      "revision": "b8311d758d7d52772bffaccc6fd90c3d3337297d"
+    }
+  },
+  "replay": {
+    "pass": true,
+    "checks": {
+      "receipts": true,
+      "reachesRoot": true,
+      "contiguousParents": true,
+      "allPromoted": true,
+      "gateUnchanged": true,
+      "gateReExecutes": true,
+      "allCommitsReceipts": true,
+      "sealedFieldsAuthentic": true
+    },
+    "failures": [],
+    "chainSummary": "gen0(root)"
+  },
+  "fingerprint": "c5942e7c9bf8f28fe7af47a6ec3887d11eeb3f8c8e8601cc6a7a54969ea0b981",
+  "inverse": [
+    {
+      "path": "functions/lib/functions/src/index.js",
+      "parentBytes": "\"use strict\";\n/**\n * Cloud Function Entry Point: copilot-agents\n *\n * Unified HTTP handler for all 7 copilot agents.\n * Deploy: gcloud functions deploy copilot-agents --runtime nodejs20 --trigger-http\n *         --region us-central1 --project agentics-dev --entry-point handler\n *         --memory 512MB --timeout 120s --no-allow-unauthenticated\n *\n * Routes:\n *   POST /v1/copilot/planner       → Planner Agent\n *   POST /v1/copilot/config        → Config Validation Agent\n *   POST /v1/copilot/decomposer    → Decomposer Agent\n *   POST /v1/copilot/clarifier     → Objective Clarifier Agent\n *   POST /v1/copilot/intent        → Intent Classifier Agent\n *   POST /v1/copilot/reflection    → Reflection Agent\n *   POST /v1/copilot/meta-reasoner → Meta-Reasoner Agent\n *   GET  /health                    → Health check\n */\nvar __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    var desc = Object.getOwnPropertyDescriptor(m, k);\n    if (!desc || (\"get\" in desc ? !m.__esModule : desc.writable || desc.configurable)) {\n      desc = { enumerable: true, get: function() { return m[k]; } };\n    }\n    Object.defineProperty(o, k2, desc);\n}) : (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    o[k2] = m[k];\n}));\nvar __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {\n    Object.defineProperty(o, \"default\", { enumerable: true, value: v });\n}) : function(o, v) {\n    o[\"default\"] = v;\n});\nvar __importStar = (this && this.__importStar) || (function () {\n    var ownKeys = function(o) {\n        ownKeys = Object.getOwnPropertyNames || function (o) {\n            var ar = [];\n            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;\n            return ar;\n        };\n        return ownKeys(o);\n    };\n    return function (mod) {\n        if (mod && mod.__esModule) return mod;\n        var result = {};\n        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== \"default\") __createBinding(result, mod, k[i]);\n        __setModuleDefault(result, mod);\n        return result;\n    };\n})();\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.handler = handler;\nconst crypto = __importStar(require(\"crypto\"));\nconst router_1 = require(\"./router\");\nconst health_1 = require(\"./health\");\nconst cors_1 = require(\"./cors\");\nconst envelope_1 = require(\"./envelope\");\n/**\n * Parse JSON body from request\n */\nfunction parseBody(req) {\n    // Cloud Functions automatically parse JSON bodies into req.body\n    if (req.body !== undefined) {\n        return req.body;\n    }\n    return undefined;\n}\n/**\n * Send JSON response\n */\nfunction sendJson(res, statusCode, data) {\n    res.writeHead(statusCode, { 'Content-Type': 'application/json' });\n    res.end(JSON.stringify(data));\n}\n/**\n * Main Cloud Function handler\n *\n * Entry point name: handler\n */\nasync function handler(req, res) {\n    const startTime = Date.now();\n    // CORS headers on every response\n    (0, cors_1.setCorsHeaders)(res);\n    // Handle CORS preflight\n    if (req.method === 'OPTIONS') {\n        (0, cors_1.handlePreflight)(res);\n        return;\n    }\n    const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);\n    const pathname = url.pathname;\n    // Build execution metadata\n    const traceId = req.headers['x-correlation-id'] || crypto.randomUUID();\n    const executionId = crypto.randomUUID();\n    const executionMetadata = {\n        trace_id: traceId,\n        timestamp: new Date().toISOString(),\n        service: 'copilot-agents',\n        execution_id: executionId,\n    };\n    // Health endpoint\n    if (pathname === '/health' && (req.method === 'GET' || req.method === 'HEAD')) {\n        const healthResult = (0, health_1.handleHealth)();\n        const layers = [\n            { layer: 'AGENT_ROUTING', status: 'completed' },\n            { layer: 'HEALTH_CHECK', status: 'completed', duration_ms: Date.now() - startTime },\n        ];\n        sendJson(res, 200, (0, envelope_1.wrapResponse)(healthResult, executionMetadata, layers));\n        return;\n    }\n    // Agent routes: POST /v1/copilot/{agent}\n    if (req.method === 'POST' && pathname.startsWith('/v1/copilot/')) {\n        // Require end-user Anthropic API key via header\n        const anthropicApiKey = req.headers['x-anthropic-api-key'];\n        if (!anthropicApiKey) {\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'error' },\n            ];\n            sendJson(res, 400, (0, envelope_1.wrapResponse)({ error: 'Missing Anthropic API key. Set it via `agentics login` or the ANTHROPIC_API_KEY environment variable.' }, executionMetadata, layers));\n            return;\n        }\n        const agentSlug = pathname.replace('/v1/copilot/', '').replace(/\\/$/, '');\n        const body = parseBody(req);\n        if (!body || typeof body !== 'object') {\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'completed' },\n            ];\n            sendJson(res, 400, (0, envelope_1.wrapResponse)({ error: 'Request body must be a JSON object' }, executionMetadata, layers));\n            return;\n        }\n        try {\n            const routingLayerStart = Date.now();\n            const agentResult = await (0, router_1.routeRequest)(agentSlug, body);\n            const routingDuration = Date.now() - routingLayerStart;\n            const agentName = agentSlug.toUpperCase().replace(/-/g, '_');\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'completed' },\n                { layer: `COPILOT_${agentName}`, status: 'completed', duration_ms: routingDuration },\n            ];\n            const statusCode = agentResult.status === 'success' ? 200 : 422;\n            sendJson(res, statusCode, (0, envelope_1.wrapResponse)(agentResult, executionMetadata, layers));\n            return;\n        }\n        catch (err) {\n            const agentName = agentSlug.toUpperCase().replace(/-/g, '_');\n            const layers = [\n                { layer: 'AGENT_ROUTING', status: 'completed' },\n                { layer: `COPILOT_${agentName}`, status: 'error', duration_ms: Date.now() - startTime },\n            ];\n            const errorMessage = err instanceof Error ? err.message : 'Internal server error';\n            sendJson(res, 500, (0, envelope_1.wrapResponse)({ error: errorMessage }, executionMetadata, layers));\n            return;\n        }\n    }\n    // 404 for unmatched routes\n    const layers = [\n        { layer: 'AGENT_ROUTING', status: 'error' },\n    ];\n    sendJson(res, 404, (0, envelope_1.wrapResponse)({\n        error: 'Not found',\n        available_routes: [\n            'POST /v1/copilot/planner',\n            'POST /v1/copilot/config',\n            'POST /v1/copilot/decomposer',\n            'POST /v1/copilot/clarifier',\n            'POST /v1/copilot/intent',\n            'POST /v1/copilot/reflection',\n            'POST /v1/copilot/meta-reasoner',\n            'GET /health',\n        ],\n    }, executionMetadata, layers));\n}\n//# sourceMappingURL=index.js.map",
+      "sha256": "04b8c0d33d8da6a050d50ea2d703f122766e2461498dd2e8a1cc708940db71b9"
+    },
+    {
+      "path": "functions/lib/functions/src/cors.js",
+      "parentBytes": "\"use strict\";\n/**\n * CORS Middleware for Cloud Functions\n *\n * Handles preflight requests and sets CORS headers on all responses.\n */\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.setCorsHeaders = setCorsHeaders;\nexports.handlePreflight = handlePreflight;\nconst ALLOWED_ORIGINS = [\n    'https://agentics.dev',\n    'https://console.agentics.dev',\n    'https://us-central1-agentics-dev.cloudfunctions.net',\n];\nconst ALLOWED_METHODS = 'GET, POST, OPTIONS';\nconst ALLOWED_HEADERS = 'Content-Type, Authorization, X-Correlation-Id, X-Request-Id';\nconst MAX_AGE = '3600';\n/**\n * Set CORS headers on the response\n */\nfunction setCorsHeaders(res) {\n    // Allow any origin for now (can be restricted via ALLOWED_ORIGINS in production)\n    res.setHeader('Access-Control-Allow-Origin', '*');\n    res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);\n    res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);\n    res.setHeader('Access-Control-Max-Age', MAX_AGE);\n}\n/**\n * Handle CORS preflight (OPTIONS) request\n */\nfunction handlePreflight(res) {\n    res.writeHead(204);\n    res.end();\n}\n//# sourceMappingURL=cors.js.map",
+      "sha256": "0e23146da9f3b496feed1b4892058e5f077a5628c7e40638ad9feaeef0edf37f"
+    },
+    {
+      "path": "functions/package.json",
+      "parentBytes": "{\n  \"name\": \"copilot-agents\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Cloud Function entry point for all 7 copilot agents\",\n  \"main\": \"index.js\",\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"gcp-build\": \"\",\n    \"start\": \"functions-framework --target=handler --source=.\",\n    \"dev\": \"ts-node src/index.ts\",\n    \"test\": \"jest --config jest.config.js\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"clean\": \"rm -rf dist\",\n    \"predeploy\": \"npm run clean && npm run build\"\n  },\n  \"keywords\": [\n    \"agentics\",\n    \"cloud-function\",\n    \"copilot-agents\"\n  ],\n  \"author\": \"Agentics\",\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@google-cloud/functions-framework\": \"^5.0.2\",\n    \"uuid\": \"^9.0.0\",\n    \"zod\": \"^3.22.0\"\n  },\n  \"devDependencies\": {\n    \"@types/jest\": \"^29.0.0\",\n    \"@types/node\": \"^20.0.0\",\n    \"@types/uuid\": \"^9.0.0\",\n    \"jest\": \"^29.0.0\",\n    \"ts-jest\": \"^29.0.0\",\n    \"ts-node\": \"^10.9.0\",\n    \"typescript\": \"^5.0.0\"\n  },\n  \"engines\": {\n    \"node\": \">=20.0.0\"\n  }\n}\n",
+      "sha256": "7ee90b68e3297bcaa41393023198a0e3783e8dad1cd31c36596bb777a6f68984"
+    },
+    {
+      "path": "functions/package-lock.json",
+      "absent": true
+    },
+    {
+      "path": "scripts/check-runtime-parity.cjs",
+      "absent": true
+    },
+    {
+      "path": ".github/workflows/function-runtime.yml",
+      "absent": true
+    }
+  ],
+  "contract": {
+    "baseline": "89060ed6324433628b9a9c90c1e93b9dabca5847",
+    "acceptance": "Actual functions/index.js deployed wrapper rejects wildcard origin grant, ignores hostile Host and sanitizes unknown-agent exceptions; six runtime holdouts and five original health/key/trace anchors. Retain all231source-unit assertions and source Rust/TS architecture. No merge before full CI/type/build/security and real Ruflo/Darwin/Flywheel gates.",
+    "trials": 3,
+    "bounds": {
+      "generations": 1,
+      "children": 1,
+      "concurrency": 1,
+      "risk_budget": 0
+    },
+    "scope": "Actual installed Functions Framework loopback HTTP and real deployment wrapper; no router/fetch/crypto mocks. Synthetic header is not a provider credential; unknown agent fails before any LLM or persistence invocation.",
+    "rollback": "Forward revert regenerated two runtime JS files and npm test wiring; preserve append-only evidence."
+  },
+  "boundary": "regressed=true is the explicit full-gate veto for existing type/build/audit failures and unavailable RuOS/Ruflo/offline learning, not newly observed component regression. cost/noop0 neutral/unmeasured; root-only replay is not candidate promotion proof."
+}

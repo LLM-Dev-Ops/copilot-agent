@@ -1,0 +1,74 @@
+{
+  "/tmp/copilot9-base-probe.json": {
+    "sha256": "6719aa50c228f20acf4585d5d16944fc62a05b37a74893188a47e29c92ed8995",
+    "bytes": 619,
+    "truncated": false,
+    "text": "{\"holdout\":[{\"name\":\"exact-trusted-origin\",\"passed\":false,\"status\":200},{\"name\":\"untrusted-origin\",\"passed\":false,\"status\":200},{\"name\":\"absent-origin\",\"passed\":false,\"status\":200},{\"name\":\"api-key-preflight\",\"passed\":false,\"status\":204},{\"name\":\"ignore-untrusted-host\",\"passed\":true,\"status\":200},{\"name\":\"sanitize-internal-error\",\"passed\":false,\"status\":500}],\"anchors\":[{\"name\":\"health\",\"passed\":true,\"status\":200},{\"name\":\"head-health\",\"passed\":true,\"status\":200},{\"name\":\"missing-api-key\",\"passed\":true,\"status\":400},{\"name\":\"not-found\",\"passed\":true,\"status\":404},{\"name\":\"trace-id\",\"passed\":true,\"status\":200}]}\n"
+  },
+  "/tmp/copilot9-base-probe.err": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "truncated": false,
+    "text": ""
+  },
+  "/tmp/copilot9-meta.json": {
+    "sha256": "71c87e67342674f335d2f3b3a59ef75449b046fec9d5fa9c8b50c288bc19ba32",
+    "bytes": 390,
+    "truncated": false,
+    "text": "{\n  \"schema\": 1,\n  \"repo\": \"copilot9-exact\",\n  \"harnessFit\": 76,\n  \"compileConfidence\": 100,\n  \"taskCoverage\": 65,\n  \"toolSafety\": 100,\n  \"memoryUsefulness\": 47,\n  \"estCostPerRunUsd\": 0.048,\n  \"recommendedMode\": \"CLI + MCP\",\n  \"archetype\": \"devops-harness\",\n  \"template\": \"vertical:devops\",\n  \"scaffoldReady\": true,\n  \"hardConstraints\": \"6/6\",\n  \"generatedAt\": \"2026-11-09T13:04:03.610Z\"\n}\n"
+  },
+  "/tmp/copilot9-darwin.log": {
+    "sha256": "5db77435b065b4b4c371202d8a55f6a890792aff94e3854f2d0121cda5944370",
+    "bytes": 758,
+    "truncated": false,
+    "text": "note: --sandbox real (the default) scores variants by this repo's own test\ncommand, which cannot distinguish between mutated harness surfaces — every\nvariant will score identically and evolution will not converge on anything\n(see README \"The evaluation substrate\", ADR-099/102). Pass --sandbox mock\n(fast, deterministic), --sandbox agent (executes the real surface code,\nstill offline), or --sandbox llm-agent (genuine real-LLM signal, real API\nspend, ADR-273) for genuine evolutionary signal.\n\nDarwin Mode — leaderboard\n  0.985  baseline  [planner]  safety=1.00  pass=1.00 ◀ winner\n  0.985  g1_v0  [planner]  safety=1.00  pass=1.00\n\nWinner: baseline\nLineage: baseline\nDelta over baseline: +0.000\n\nArtifacts: /tmp/copilot9-final/functions/.metaharness\n"
+  },
+  "/tmp/copilot9-clean-test.log": {
+    "sha256": "a94c17e7977067b7c3c0bb0a6c6da01dd0357440911ea24bcd30cab104c646f7",
+    "bytes": 24154,
+    "truncated": true,
+    "text": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\n\n> copilot-agents@1.0.0 test\n> jest --config jest.config.js --runInBand && node ../scripts/check-runtime-parity.cjs && node ../scripts/probe-runtime.cjs ..\n\nPASS ../services/agents/intent-classifier/intent-classifier-agent.test.ts\n  ● Console\n\n    console.error\n      [intent-classifier-agent] RuVector persistence failed (non-blocking): RuVector connection failed\n\n      262 |       } catch (persistError) {\n      263 |         const persistMessage = persistError instanceof Error ? persistError.message : 'Unknown persistence error';\n    > 264 |         console.error(`[${AGENT_ID}] RuVector persist\n[TRUNCATED]\nuites.\nDeployment entry/CORS runtime match canonical TypeScript with pinned compiler.\n{\"holdout\":[{\"name\":\"exact-trusted-origin\",\"passed\":true,\"status\":200},{\"name\":\"untrusted-origin\",\"passed\":true,\"status\":200},{\"name\":\"absent-origin\",\"passed\":true,\"status\":200},{\"name\":\"api-key-preflight\",\"passed\":true,\"status\":204},{\"name\":\"ignore-untrusted-host\",\"passed\":true,\"status\":200},{\"name\":\"sanitize-internal-error\",\"passed\":true,\"status\":500}],\"anchors\":[{\"name\":\"health\",\"passed\":true,\"status\":200},{\"name\":\"head-health\",\"passed\":true,\"status\":200},{\"name\":\"missing-api-key\",\"passed\":true,\"status\":400},{\"name\":\"not-found\",\"passed\":true,\"status\":404},{\"name\":\"trace-id\",\"passed\":true,\"status\":200}]}\n"
+  },
+  "/tmp/copilot9-clean-install.log": {
+    "sha256": "70ea099347a264b91d3f39307a1cd8dc1da2c4e6b10f06a55b6ec3adaf24308a",
+    "bytes": 1078,
+    "truncated": false,
+    "text": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\nnpm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.\nnpm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\nnpm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\n\nadded 410 packages in 2s\n"
+  },
+  "/tmp/copilot9-clean-type.log": {
+    "sha256": "20a50388fcb51ad891dc2e0278bb242224423c21685fffc326305e5fc03b3069",
+    "bytes": 3709,
+    "truncated": true,
+    "text": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\n\n> copilot-agents@1.0.0 typecheck\n> tsc --noEmit\n\n../services/agents/config-validation/config-validation-agent.ts(34,30): error TS2307: Cannot find module 'uuid' or its corresponding type declarations.\n../services/agents/contracts/base-agent.ts(16,19): error TS2307: Cannot find module 'zod' or its corresponding type declarations.\n../services/agents/contracts/config-validation-schemas.ts(22,19): error TS2307: Cannot find module 'zod' or its corresponding type declarations.\n../services/agents/contracts/decision-event.ts(8,19): error TS2307: Cannot find module 'zod' or its corresponding type decla\n[TRUNCATED]\nervices/agents/objective-clarifier/ruvector-persistence.ts(130,13): error TS18046: 'result' is of type 'unknown'.\n../services/agents/planner/planner-agent.ts(31,30): error TS2307: Cannot find module 'uuid' or its corresponding type declarations.\n../services/agents/planner/ruvector-persistence.ts(63,11): error TS18046: 'result' is of type 'unknown'.\n../services/agents/planner/ruvector-persistence.ts(93,12): error TS18046: 'result' is of type 'unknown'.\n../services/agents/planner/ruvector-persistence.ts(130,13): error TS18046: 'result' is of type 'unknown'.\n../services/agents/reflection/reflection-agent.ts(30,30): error TS2307: Cannot find module 'uuid' or its corresponding type declarations.\n"
+  },
+  "/tmp/copilot9-clean-build.log": {
+    "sha256": "13e29b872d142b900eae898d0c2e22c3e7a4330cad6a993a26647d0f7a870912",
+    "bytes": 3696,
+    "truncated": true,
+    "text": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\n\n> copilot-agents@1.0.0 build\n> tsc\n\n../services/agents/config-validation/config-validation-agent.ts(34,30): error TS2307: Cannot find module 'uuid' or its corresponding type declarations.\n../services/agents/contracts/base-agent.ts(16,19): error TS2307: Cannot find module 'zod' or its corresponding type declarations.\n../services/agents/contracts/config-validation-schemas.ts(22,19): error TS2307: Cannot find module 'zod' or its corresponding type declarations.\n../services/agents/contracts/decision-event.ts(8,19): error TS2307: Cannot find module 'zod' or its corresponding type declarations.\n../s\n[TRUNCATED]\nervices/agents/objective-clarifier/ruvector-persistence.ts(130,13): error TS18046: 'result' is of type 'unknown'.\n../services/agents/planner/planner-agent.ts(31,30): error TS2307: Cannot find module 'uuid' or its corresponding type declarations.\n../services/agents/planner/ruvector-persistence.ts(63,11): error TS18046: 'result' is of type 'unknown'.\n../services/agents/planner/ruvector-persistence.ts(93,12): error TS18046: 'result' is of type 'unknown'.\n../services/agents/planner/ruvector-persistence.ts(130,13): error TS18046: 'result' is of type 'unknown'.\n../services/agents/reflection/reflection-agent.ts(30,30): error TS2307: Cannot find module 'uuid' or its corresponding type declarations.\n"
+  },
+  "/tmp/copilot9-rust-attempt.log": {
+    "sha256": "a326558a932a2a67436a997ada30bbb04a637812287a7435cac205a7a51c6e71",
+    "bytes": 44,
+    "truncated": false,
+    "text": "/bin/bash: line 1: cargo: command not found\n"
+  },
+  "/tmp/copilot9-ruflo-attempt.log": {
+    "sha256": "659b3790f7c3fb24bf3284530200c124da1bba5ce8c8a9ee952573f57da6fb18",
+    "bytes": 787,
+    "truncated": false,
+    "text": "node:internal/modules/cjs/loader:1568\n  throw err;\n  ^\n\nError: Cannot find module '/home/ruv/.local/share/llm-dev-ops-tools/node_modules/ruflo/bin/ruflo.js'\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)\n    at Module._load (node:internal/modules/cjs/loader:1341:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v24.22.1\n"
+  },
+  "/tmp/copilot9-learning-attempt.log": {
+    "sha256": "664e3a72bae8485f30e091a626f8bcab12bd6632f5cea2a4b137bff81f1ad2e8",
+    "bytes": 142,
+    "truncated": false,
+    "text": "python3: can't open file '/home/ruv/work/research-lab-runtime-recovery-20261016/scripts/offline-exec.py': [Errno 2] No such file or directory\n"
+  },
+  "/tmp/copilot9-negative-control.log": {
+    "sha256": "73bf43f035cffa72c0fa7855107edd6765061c79431b40fd8cdae73984fd3712",
+    "bytes": 4430,
+    "truncated": true,
+    "text": "node:assert:152\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Deployment runtime drift: cors; regenerate from canonical TypeScript before commit\n+ actual - expected\n\n  '\"use strict\";\\n' +\n+   '// Negative control: deliberate deployment drift, never proposed for merge.\\n' +\n    '/**\\n' +\n    ' * CORS Middleware for Cloud Functions\\n' +\n    ' *\\n' +\n    ' * Handles preflight requests and sets CORS headers on all responses.\\n' +\n    ' */\\n' +\n\n    at Object.<anonymous> (/tmp/copilot9-mutant/scripts/check-runtime-parity.cjs:10:9)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Object..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.loa\n[TRUNCATED]\n  if (typeof origin === 'string' && ALLOWED_ORIGINS.has(origin)) {\\n\" +\n    \"        res.setHeader('Access-Control-Allow-Origin', origin);\\n\" +\n    \"        res.setHeader('Vary', 'Origin');\\n\" +\n    '    }\\n' +\n    \"    res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);\\n\" +\n    \"    res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);\\n\" +\n    \"    res.setHeader('Access-Control-Max-Age', MAX_AGE);\\n\" +\n    '}\\n' +\n    '/**\\n' +\n    ' * Handle CORS preflight (OPTIONS) request\\n' +\n    ' */\\n' +\n    'function handlePreflight(res) {\\n' +\n    '    res.writeHead(204);\\n' +\n    '    res.end();\\n' +\n    '}\\n',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v24.22.1\n"
+  }
+}

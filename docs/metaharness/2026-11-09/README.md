@@ -1,0 +1,58 @@
+# November 9 morning improvement cycle — copilot-agent
+
+EXECUTED; deployed-runtime component VALIDATED; Darwin NO_IMPROVEMENT; full repository/Ruflo/offline learning/promotion BLOCKED; MERGED:none. Existing recurring task unchanged.
+
+## Coverage, rotation and ownership
+Fresh installation168979216 pagination returned58 repositories at offset0/page_size100,0at offset100. All58 accessible nonarchived LLM-Dev-Ops repositories had current main/root instruction+manifest inventories/latest main CI/all open PR pages inspected:161open PRs. coverage.json names inspected and57deferred source targets. Inventory is not a deep build/source audit of all58.
+Resumed copilot-agent ready PR4, last updatedOctober25, rather than duplicating. Yesterday's connector-hub/config-manager/benchmark-exchange branches untouched. One writer per isolated primary/base/interim/final/clean/negative-control checkout; atomic claim released.20minute maximum cycle; Darwin1generation/1child/concurrency1/risk0. No force push, deployments, package publication, paid provisioning, protection bypass or user data deletion.
+
+## Substantive deployment fix
+Previous PR89060ed6324433628b9a9c90c1e93b9dabca5847/main756402a87e39419efa90a2accfe34b46083af945.
+Source TypeScript already contained the October security fixes, but actual functions/index.js exports tracked functions/lib/functions/src/index.js, whose sibling CORS module still granted wildcard origins and whose error handler exposed internal exception messages. Source-only Jest success did NOT prove deploy-entry security.
+Frozen executable native-runtime probe/contract commit b8311d758d7d52772bffaccc6fd90c3d3337297d preceded implementation. First implementation162edde0de8a0126e73c60fa930752109be3ce36 regenerated only existing deployed entry/CORS JS from unchanged canonical TS using TypeScript5.9.3; added byte-exact compiler parity guard and native regression test wiring. Final3e09a999fb1500b6cfdad23b9e7a8761d9fbfea6 adds committed dependency lock and pinned-action Node20 runtime/type CI.
+Compiler5.9.3 and Functions Framework5.0.5 are exact direct pins, matching actual baseline installed versions. Committed lock captures full tested graph; npm test now runs existing Jest in-band plus parity/native checks. No canonical TS business logic/Rust source/test assertions modified. Existing generated JS refreshed because those files are the real deployment entry, not decorative output. Unrelated dist outputs from failed primary builds were NOT committed.
+Guard scope is two security-sensitive runtime modules, not every compiled module. It fails on deliberate runtime drift; negative control remains isolated/unproposed. New CI never weakens types/security: audit/typecheck fail openly.
+
+## Frozen acceptance and actual measurements
+Actual installed Functions Framework getTestServer over loopback HTTP, real functions/index.js export, native fetch/crypto/router; no mocked router/fetch/crypto/provider. Synthetic unknown-agent API header is not a credential and throws before agent/provider/persistence invocation.
+Acceptance:6deployed-runtime security checks;5health/key/trace anchors;retain231existing source assertions; all full gates required before merge.
+
+| Actual result | Frozen baseline | Exact final |
+|---|---:|---:|
+| Deployment security checks |1/6|6/6|
+| Health/key/trace anchors |5/5|5/5|
+| Source Jest suites/assertions |7/7,231/231|7/7,231/231|
+| Three alternating HTTP trials |same results|same results|
+| Compiler entry/CORS parity |known stale bytes|exit0|
+| Deliberately drifted negative control |not scored|guard exit1 as required|
+| Typecheck/build diagnostics |26/26 pre-existing source debt|26/26|
+| Full npm audit |initial ENOLOCK, not clean|11:7low3moderate1high|
+| Production npm audit |not claimed fresh baseline measurement|4:3moderate1high|
+
+Host-header case already passed baseline at this HTTP substrate; it is NOT credited as a newly measured Host improvement. Measured gains are exact trusted-origin reflection,Vary,deny attacker/missing origin,API-key preflight allowance,and generic internal error response. Final source-parity output also uses constant URL base, but Host case alone is not proof of new lift.
+No throughput/latency/cost/coverage improvement claim. Source units retain existing mocks; only native probe demonstrates real deployment-entry HTTP behavior. No deployed GCP/IAM integration claim.
+Initial primary Node24.22.1 installed baseline dependencies without a lock for diagnosis. Recorded actual TypeScript5.9.3/Framework5.0.5/Jest29.7.0/ts-jest29.4.15. Clean final Node20.20.2 npm ci --ignore-scripts --no-audit --no-fund exit0; npm test exit0,syntax/diff/parity checks0. Canonical TS/services/agents/crates unchanged between frozen and final. Exact baseline and final use the same tested dependency graph for paired native evaluation; final clean lock install independently revalidated.
+npm run typecheck exit2 and npm run build exit2,26diagnostics each. No transpile-only success presented as a full build. New parity guard compares canonical transpilation but cannot substitute for typechecking. Initial regenerated JS extra EOF newline failed guard and diff check; corrected artifact bytes, not relaxed guard. An initial diagnostic launched from wrong cwd failed MODULE_NOT_FOUND, corrected root invocation passed; no fabricated check success.
+npm audit initially failed ENOLOCK; after committing resolution complete audit11/prod4. Highest finding is zod<4.6.6, npm proposes semver-major4.6.7; major migration not attempted within this runtime-parity scope. No suppressed audit/coverage findings or automatic unsafe override.
+
+## Real tools and runtime-specific blockers
+Pinned locally executed MetaHarness0.4.2,Darwin0.10.3,Flywheel0.1.12; package resolved/integrity metadata in tools.json. Tool packages installed in separate evaluation directory, not application dependencies. Current pinned package README/interfaces inspected. Harness upstream HEAD independently queried689a680e0a8475331e3db893744ce8aae07923d5; package versions, not a newer upstream build, executed.
+metaharness score /tmp/copilot9-exact --json from exact worktree exit0,harnessFit76,6/6hardconstraints; heuristic only, not compilation proof or observed cost.
+From fresh final/functions:
+PATH=Node20:$PATH timeout --kill-after=3 40 /tmp/copilot9-tools/node_modules/.bin/metaharness-darwin evolve . --generations 1 --children 1 --concurrency 1 --seed 2026110908 --risk-budget 0 --sandbox real --mutator deterministic
+Exit0; actual npm test traces pass1.00,baseline/planner child both0.985,delta0. Baseline retained; NO_IMPROVEMENT. Same repo-test substrate cannot establish a causal harness-surface gain. No mock sandbox or repeated generation IDs.
+Flywheel Node20 scripts/evaluate-runtime.mjs /tmp/copilot9-base /tmp/copilot9-final /tmp/copilot9-tools /tmp/copilot9-flywheel.json executed runFlywheelGenerations/meetsPromotionRule/makeSigner/gateFingerprint/verifyReplayBundle. Actual HTTP observations,one source proposal,holdout1/6→6/6,anchors retained. Explicit regressed:true full-gate veto reflects outstanding type/build/audit/runtime failures, NOT newly observed component regression.0promotions, signed root-only replay8/8. Neutral cost/noop0 unmeasured; root replay not candidate promotion proof. Inverse original file bytes match frozen git blobs; new-file absence retained for rollback.
+
+RuOS initially stopped/asleep,0connections. desktop_start(machine_id40eb5828d43bfce01110e62d334a6de0) returned HTTP502: "*ruos-af940f7f-509c-4227-9498-* has an unresolved launch cancellation; a new start was not sent." Status remained stopped. This is current runtime availability, not historical GitHub403 or shell authentication. No alternate fleet identity/SSH route, cancellation bypass, restart loop or replacement provisioning attempted.
+Primary cargo test --locked --workspace exit127,cargo absent. Primary node /home/ruv/.local/share/llm-dev-ops-tools/node_modules/ruflo/bin/ruflo.js --version exit1,MODULE_NOT_FOUND. No current Ruflo3.56.3 execution/version verification claimed. No orchestration process/learning result borrowed from yesterday.
+RuOS access blocker prevented verifying recovery checkout revision/current upstream or running current bootstrap/OpenSSL/locked Rust tests there. No checkout reuse or missing-pkg-config/OpenSSL diagnosis claimed. Rust build/lint/integration/security/coverage unvalidated locally; hosted job evidence separate.
+Requested primary offline command attempted with RUFLO_MODEL_DIR=/home/ruv/.cache/llm-dev-ops-models,python3 RECOVERY/scripts/offline-exec.py node --import RECOVERY/scripts/ruflo-local-model.mjs RUFLO/bin/ruflo.js hooks post-task --task-id copilot-20261109-runtime --success false --quality 0.8 --agent codex --task OUTCOME --store-results --format json; RECOVERY=/home/ruv/work/research-lab-runtime-recovery-20261016,RUFLO=/home/ruv/.local/share/llm-dev-ops-tools/node_modules/ruflo.
+Exit2: Python cannot open offline-exec.py,ENOENT in primary. Therefore kernel restrictions/model loading did NOT execute, no real embedding claim, and learningUpdates.available/outcomePersisted/feedback.recorded/trajectory.recorded NOT confirmed. No default network hook,hash embedding fallback,remote model download or task text to Hugging Face. RuOS/model paths are not assumed repaired elsewhere.
+
+## Guidance, CI, conflicts and rollback
+Equivalent recall dream-machine0/0, nicholas-ruest/ruvnet-dream-machine9playbooks/6anti,8unique content lessons. Unscreened:true/risk warnings[] not approvals. Source a507f788fc606aa61dc2125106cfa44f4ea8fff8 independently checked; applied fresh isolated Darwin state. Duplicate avoidance→resumePR4; read-set lesson→recheck main; anti-overfit→frozen native anchors/original units. Current explicit merge authorization supersedes historical human-only advice, not branch protections. No audit gate weakened. Actual blocked outcome appended via Core Memory authorized interface; this is separate from unavailable Ruflo learning.
+Rust core/TypeScript integration,IAM-only GCP deployment config,environment routing and RuVector/CloudSQL persistence ownership preserved; no new service-owned database or architecture migration.
+Final Function Runtime Quality42622335756 FAILURE: hosted Node20 clean npm ci,231tests,parity/native checks PASS; audit step fails. Separate types job fails. Test Suite42622335630 FAILURE. CI42622335607 has failed format/Clippy/security/build/coverage jobs,with other jobs still running at snapshot; some integration/compliance jobs pass. No all-green/full integration claim. jobs.json records actual snapshot,not completion assumptions.
+Main756402a87e39419efa90a2accfe34b46083af945 remains ancestor,check0. PR4non-draft,mergeable:true,merged:false; no conflicts/resolutions needed. Administrative branch-protection GET403 lacks admin scope,not connector write access; expected-head leases succeeded. No merge attempt under red gates,merged-main SHA:none.
+Rollback forward-revert final3e09a99 and prior162edde source/runtime/npm wiring to frozenb8311d7 inverse bytes; remove only new lock/guard/workflow through a normal forward commit. Preserve probe/contract/append-only memory; never force/reset or erase records. Revalidate resulting exact commit and current main/full gates.
+Remaining:recover existing RuOS launch cancellation through approved management,run current bootstrap/locked Rust/Ruflo+offline learning there; resolve26type/build diagnostics and audit debt; complete all full-repository CI/coverage/integration/security checks,then new full Flywheel lineage. Rotate57deferred source targets. Existing task remains enabled/unchanged because substantive safe work executed despite runtime blocker.

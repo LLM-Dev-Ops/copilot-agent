@@ -1,0 +1,510 @@
+{
+  "inverseVerified": true,
+  "baselineTests": {
+    "passed": 231,
+    "failed": 0,
+    "suites": 7
+  },
+  "darwinRuns": [
+    {
+      "id": "baseline",
+      "sha256": "76e416008d3264c695e04aa626f8ce1cce0ffa77e822610641fd908fbdee1779",
+      "bytes": 77682,
+      "score": {
+        "variantId": "baseline",
+        "taskSuccess": 1,
+        "testPassRate": 1,
+        "traceQuality": 0.9,
+        "costEfficiency": 1,
+        "latencyEfficiency": 1,
+        "safetyScore": 1,
+        "secretExposure": 0,
+        "destructiveAction": 0,
+        "hallucinatedFile": 0,
+        "toolLoop": 0,
+        "costOverrun": 0,
+        "baseScore": 0.985,
+        "finalScore": 0.985,
+        "promoted": true,
+        "reason": "promoted: finalScore 0.9850 > parent 0.0000 + delta 0.05 (safety 1.00, no test regression)"
+      },
+      "traces": [
+        {
+          "taskId": "run repository test suite",
+          "exitCode": 0,
+          "stdoutBytes": 850,
+          "stdoutHash": "fe704fca3ff0f4407896e1bf2c25184d238179523b9ffd5ea8c2b5b1b61bc0a8"
+        },
+        {
+          "taskId": "verify generated harness safety",
+          "exitCode": 0,
+          "stdoutBytes": 850,
+          "stdoutHash": "fe704fca3ff0f4407896e1bf2c25184d238179523b9ffd5ea8c2b5b1b61bc0a8"
+        },
+        {
+          "taskId": "check trace quality",
+          "exitCode": 0,
+          "stdoutBytes": 850,
+          "stdoutHash": "fe704fca3ff0f4407896e1bf2c25184d238179523b9ffd5ea8c2b5b1b61bc0a8"
+        }
+      ]
+    },
+    {
+      "id": "g1_v0",
+      "sha256": "dc9291c56cf7f2b8c23e69eba8261cedb9d973fd7dcc66a1fb6ef879081f144d",
+      "bytes": 77656,
+      "score": {
+        "variantId": "g1_v0",
+        "taskSuccess": 1,
+        "testPassRate": 1,
+        "traceQuality": 0.9,
+        "costEfficiency": 1,
+        "latencyEfficiency": 1,
+        "safetyScore": 1,
+        "secretExposure": 0,
+        "destructiveAction": 0,
+        "hallucinatedFile": 0,
+        "toolLoop": 0,
+        "costOverrun": 0,
+        "baseScore": 0.985,
+        "finalScore": 0.985,
+        "promoted": false,
+        "reason": "not promoted: finalScore 0.9850 ≤ parent 0.9850 + delta 0.05"
+      },
+      "traces": [
+        {
+          "taskId": "run repository test suite",
+          "exitCode": 0,
+          "stdoutBytes": 850,
+          "stdoutHash": "fe704fca3ff0f4407896e1bf2c25184d238179523b9ffd5ea8c2b5b1b61bc0a8"
+        },
+        {
+          "taskId": "verify generated harness safety",
+          "exitCode": 0,
+          "stdoutBytes": 850,
+          "stdoutHash": "fe704fca3ff0f4407896e1bf2c25184d238179523b9ffd5ea8c2b5b1b61bc0a8"
+        },
+        {
+          "taskId": "check trace quality",
+          "exitCode": 0,
+          "stdoutBytes": 850,
+          "stdoutHash": "fe704fca3ff0f4407896e1bf2c25184d238179523b9ffd5ea8c2b5b1b61bc0a8"
+        }
+      ]
+    }
+  ],
+  "audit": {
+    "auditReportVersion": 2,
+    "vulnerabilities": {
+      "@google-cloud/functions-framework": {
+        "name": "@google-cloud/functions-framework",
+        "severity": "moderate",
+        "isDirect": true,
+        "via": [
+          "cloudevents"
+        ],
+        "effects": [],
+        "range": ">=2.1.0",
+        "nodes": [
+          "node_modules/@google-cloud/functions-framework"
+        ],
+        "fixAvailable": {
+          "name": "@google-cloud/functions-framework",
+          "version": "2.0.0",
+          "isSemVerMajor": true
+        }
+      },
+      "@jest/core": {
+        "name": "@jest/core",
+        "severity": "low",
+        "isDirect": false,
+        "via": [
+          "jest-config"
+        ],
+        "effects": [],
+        "range": ">=25.2.0-alpha.86",
+        "nodes": [
+          "node_modules/@jest/core"
+        ],
+        "fixAvailable": true
+      },
+      "cloudevents": {
+        "name": "cloudevents",
+        "severity": "moderate",
+        "isDirect": false,
+        "via": [
+          "uuid"
+        ],
+        "effects": [
+          "@google-cloud/functions-framework"
+        ],
+        "range": ">=3.0.0",
+        "nodes": [
+          "node_modules/cloudevents"
+        ],
+        "fixAvailable": {
+          "name": "@google-cloud/functions-framework",
+          "version": "2.0.0",
+          "isSemVerMajor": true
+        }
+      },
+      "create-jest": {
+        "name": "create-jest",
+        "severity": "low",
+        "isDirect": false,
+        "via": [
+          "jest-config"
+        ],
+        "effects": [
+          "jest-cli"
+        ],
+        "range": ">=29.7.0",
+        "nodes": [
+          "node_modules/create-jest"
+        ],
+        "fixAvailable": {
+          "name": "jest",
+          "version": "25.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      "deepmerge": {
+        "name": "deepmerge",
+        "severity": "low",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1243505,
+            "name": "deepmerge",
+            "dependency": "deepmerge",
+            "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+            "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+            "severity": "low",
+            "cwe": [
+              "CWE-1321"
+            ],
+            "cvss": {
+              "score": 5.3,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+            },
+            "range": ">=4.2.0 <=4.3.1"
+          }
+        ],
+        "effects": [
+          "jest-config"
+        ],
+        "range": ">=4.2.0",
+        "nodes": [
+          "node_modules/deepmerge"
+        ],
+        "fixAvailable": {
+          "name": "jest",
+          "version": "25.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      "jest": {
+        "name": "jest",
+        "severity": "low",
+        "isDirect": true,
+        "via": [
+          "@jest/core",
+          "jest-cli"
+        ],
+        "effects": [
+          "ts-jest"
+        ],
+        "range": ">=25.2.0-alpha.86",
+        "nodes": [
+          "node_modules/jest"
+        ],
+        "fixAvailable": {
+          "name": "jest",
+          "version": "25.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      "jest-cli": {
+        "name": "jest-cli",
+        "severity": "low",
+        "isDirect": false,
+        "via": [
+          "@jest/core",
+          "create-jest",
+          "jest-config"
+        ],
+        "effects": [
+          "jest"
+        ],
+        "range": ">=25.2.0-alpha.86",
+        "nodes": [
+          "node_modules/jest-cli"
+        ],
+        "fixAvailable": {
+          "name": "jest",
+          "version": "25.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      "jest-config": {
+        "name": "jest-config",
+        "severity": "low",
+        "isDirect": false,
+        "via": [
+          "deepmerge"
+        ],
+        "effects": [
+          "@jest/core",
+          "create-jest",
+          "jest-cli"
+        ],
+        "range": ">=25.2.0-alpha.86",
+        "nodes": [
+          "node_modules/jest-config"
+        ],
+        "fixAvailable": {
+          "name": "jest",
+          "version": "25.1.0",
+          "isSemVerMajor": true
+        }
+      },
+      "ts-jest": {
+        "name": "ts-jest",
+        "severity": "low",
+        "isDirect": true,
+        "via": [
+          "jest"
+        ],
+        "effects": [],
+        "range": ">=25.10.0-alpha.1",
+        "nodes": [
+          "node_modules/ts-jest"
+        ],
+        "fixAvailable": {
+          "name": "ts-jest",
+          "version": "25.5.1",
+          "isSemVerMajor": true
+        }
+      },
+      "uuid": {
+        "name": "uuid",
+        "severity": "moderate",
+        "isDirect": true,
+        "via": [
+          {
+            "source": 1119441,
+            "name": "uuid",
+            "dependency": "uuid",
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-787",
+              "CWE-1285"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+            },
+            "range": "<11.1.1"
+          }
+        ],
+        "effects": [
+          "cloudevents"
+        ],
+        "range": "<11.1.1",
+        "nodes": [
+          "node_modules/cloudevents/node_modules/uuid",
+          "node_modules/uuid"
+        ],
+        "fixAvailable": {
+          "name": "uuid",
+          "version": "14.0.3",
+          "isSemVerMajor": true
+        }
+      },
+      "zod": {
+        "name": "zod",
+        "severity": "high",
+        "isDirect": true,
+        "via": [
+          {
+            "source": 1243066,
+            "name": "zod",
+            "dependency": "zod",
+            "title": "Zod can exhaust memory while validating oversized constrained collections",
+            "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+            "severity": "high",
+            "cwe": [
+              "CWE-770"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<4.6.6"
+          }
+        ],
+        "effects": [],
+        "range": "<4.6.6",
+        "nodes": [
+          "node_modules/zod"
+        ],
+        "fixAvailable": {
+          "name": "zod",
+          "version": "4.6.7",
+          "isSemVerMajor": true
+        }
+      }
+    },
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 7,
+        "moderate": 3,
+        "high": 1,
+        "critical": 0,
+        "total": 11
+      },
+      "dependencies": {
+        "prod": 131,
+        "dev": 281,
+        "optional": 2,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 411
+      }
+    }
+  },
+  "prodAudit": {
+    "auditReportVersion": 2,
+    "vulnerabilities": {
+      "@google-cloud/functions-framework": {
+        "name": "@google-cloud/functions-framework",
+        "severity": "moderate",
+        "isDirect": true,
+        "via": [
+          "cloudevents"
+        ],
+        "effects": [],
+        "range": ">=2.1.0",
+        "nodes": [
+          "node_modules/@google-cloud/functions-framework"
+        ],
+        "fixAvailable": {
+          "name": "@google-cloud/functions-framework",
+          "version": "2.0.0",
+          "isSemVerMajor": true
+        }
+      },
+      "cloudevents": {
+        "name": "cloudevents",
+        "severity": "moderate",
+        "isDirect": false,
+        "via": [
+          "uuid"
+        ],
+        "effects": [
+          "@google-cloud/functions-framework"
+        ],
+        "range": ">=3.0.0",
+        "nodes": [
+          "node_modules/cloudevents"
+        ],
+        "fixAvailable": {
+          "name": "@google-cloud/functions-framework",
+          "version": "2.0.0",
+          "isSemVerMajor": true
+        }
+      },
+      "uuid": {
+        "name": "uuid",
+        "severity": "moderate",
+        "isDirect": true,
+        "via": [
+          {
+            "source": 1119441,
+            "name": "uuid",
+            "dependency": "uuid",
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-787",
+              "CWE-1285"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+            },
+            "range": "<11.1.1"
+          }
+        ],
+        "effects": [
+          "cloudevents"
+        ],
+        "range": "<11.1.1",
+        "nodes": [
+          "node_modules/cloudevents/node_modules/uuid",
+          "node_modules/uuid"
+        ],
+        "fixAvailable": {
+          "name": "uuid",
+          "version": "14.0.3",
+          "isSemVerMajor": true
+        }
+      },
+      "zod": {
+        "name": "zod",
+        "severity": "high",
+        "isDirect": true,
+        "via": [
+          {
+            "source": 1243066,
+            "name": "zod",
+            "dependency": "zod",
+            "title": "Zod can exhaust memory while validating oversized constrained collections",
+            "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+            "severity": "high",
+            "cwe": [
+              "CWE-770"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<4.6.6"
+          }
+        ],
+        "effects": [],
+        "range": "<4.6.6",
+        "nodes": [
+          "node_modules/zod"
+        ],
+        "fixAvailable": {
+          "name": "zod",
+          "version": "4.6.7",
+          "isSemVerMajor": true
+        }
+      }
+    },
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 3,
+        "high": 1,
+        "critical": 0,
+        "total": 4
+      },
+      "dependencies": {
+        "prod": 131,
+        "dev": 281,
+        "optional": 2,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 411
+      }
+    }
+  }
+}
